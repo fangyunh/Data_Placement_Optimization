@@ -1,0 +1,500 @@
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = PreferHBM, Data Migration = NoMigration
+Total simulation time: 23214494957.6358 ns, 23.2145 seconds
+Average time per token: 5667601.308017 ns
+
+Avg alpha rate: 0.992730
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = PreferHBM, Data Migration = PriorMigration
+Total simulation time: 23217447658.1464 ns, 23.2174 seconds
+Average time per token: 5668322.182165 ns
+
+Avg alpha rate: 0.992803
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = PreferHBM, Data Migration = SkippedTokensMigration
+Total simulation time: 23218798266.4073 ns, 23.2188 seconds
+Average time per token: 5668651.920510 ns
+
+Avg alpha rate: 0.992855
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = PreferHBM, Data Migration = PastWindowMigration
+Total simulation time: 23188791415.1437 ns, 23.1888 seconds
+Average time per token: 5661326.029088 ns
+
+Avg alpha rate: 0.991934
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = PreferHBM, Data Migration = LookAheadMigration
+Total simulation time: 23342765734.1263 ns, 23.3428 seconds
+Average time per token: 5698917.415558 ns
+
+Avg alpha rate: 0.992823
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = PreferHBM, Data Migration = LookAheadBatchMigration
+Total simulation time: 23214494957.6358 ns, 23.2145 seconds
+Average time per token: 5667601.308017 ns
+
+Avg alpha rate: 0.992730
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = PreferHBM, Data Migration = AlphaMigration
+Total simulation time: 22732633517.9044 ns, 22.7326 seconds
+Average time per token: 5549959.354957 ns
+
+Avg alpha rate: 0.978327
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = SplitToken, Data Migration = NoMigration
+Total simulation time: 23192462116.2814 ns, 23.1925 seconds
+Average time per token: 5662222.196358 ns
+
+Avg alpha rate: 0.992057
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = SplitToken, Data Migration = PriorMigration
+Total simulation time: 23194804090.1350 ns, 23.1948 seconds
+Average time per token: 5662793.967318 ns
+
+Avg alpha rate: 0.992115
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = SplitToken, Data Migration = SkippedTokensMigration
+Total simulation time: 23195821700.6422 ns, 23.1958 seconds
+Average time per token: 5663042.407383 ns
+
+Avg alpha rate: 0.992153
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = SplitToken, Data Migration = PastWindowMigration
+Total simulation time: 23164504262.2257 ns, 23.1645 seconds
+Average time per token: 5655396.548395 ns
+
+Avg alpha rate: 0.991196
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = SplitToken, Data Migration = LookAheadMigration
+Total simulation time: 23342775491.3656 ns, 23.3428 seconds
+Average time per token: 5698919.797697 ns
+
+Avg alpha rate: 0.992823
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = SplitToken, Data Migration = LookAheadBatchMigration
+Total simulation time: 23214502201.4406 ns, 23.2145 seconds
+Average time per token: 5667603.076524 ns
+
+Avg alpha rate: 0.992731
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = SplitToken, Data Migration = AlphaMigration
+Total simulation time: 22724047501.2693 ns, 22.7240 seconds
+Average time per token: 5547863.159490 ns
+
+Avg alpha rate: 0.978082
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = BatchRatio, Data Migration = NoMigration
+Total simulation time: 23192793948.4026 ns, 23.1928 seconds
+Average time per token: 5662303.210059 ns
+
+Avg alpha rate: 0.992067
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = BatchRatio, Data Migration = PriorMigration
+Total simulation time: 23194979669.0559 ns, 23.1950 seconds
+Average time per token: 5662836.833266 ns
+
+Avg alpha rate: 0.992120
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = BatchRatio, Data Migration = SkippedTokensMigration
+Total simulation time: 23196172468.3714 ns, 23.1962 seconds
+Average time per token: 5663128.044036 ns
+
+Avg alpha rate: 0.992164
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = BatchRatio, Data Migration = PastWindowMigration
+Total simulation time: 23164485256.1322 ns, 23.1645 seconds
+Average time per token: 5655391.908235 ns
+
+Avg alpha rate: 0.991195
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = BatchRatio, Data Migration = LookAheadMigration
+Total simulation time: 23342765734.1263 ns, 23.3428 seconds
+Average time per token: 5698917.415558 ns
+
+Avg alpha rate: 0.992823
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = BatchRatio, Data Migration = LookAheadBatchMigration
+Total simulation time: 23214494957.6358 ns, 23.2145 seconds
+Average time per token: 5667601.308017 ns
+
+Avg alpha rate: 0.992730
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = BatchRatio, Data Migration = AlphaMigration
+Total simulation time: 22723882813.7698 ns, 22.7239 seconds
+Average time per token: 5547822.952581 ns
+
+Avg alpha rate: 0.978077
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LookAheadBatch, Data Migration = NoMigration
+Total simulation time: 23214494957.6358 ns, 23.2145 seconds
+Average time per token: 5667601.308017 ns
+
+Avg alpha rate: 0.992730
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LookAheadBatch, Data Migration = PriorMigration
+Total simulation time: 23217447658.1464 ns, 23.2174 seconds
+Average time per token: 5668322.182165 ns
+
+Avg alpha rate: 0.992803
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LookAheadBatch, Data Migration = SkippedTokensMigration
+Total simulation time: 23218798266.4073 ns, 23.2188 seconds
+Average time per token: 5668651.920510 ns
+
+Avg alpha rate: 0.992855
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LookAheadBatch, Data Migration = PastWindowMigration
+Total simulation time: 23188791415.1437 ns, 23.1888 seconds
+Average time per token: 5661326.029088 ns
+
+Avg alpha rate: 0.991934
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LookAheadBatch, Data Migration = LookAheadMigration
+Total simulation time: 23342765734.1263 ns, 23.3428 seconds
+Average time per token: 5698917.415558 ns
+
+Avg alpha rate: 0.992823
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LookAheadBatch, Data Migration = LookAheadBatchMigration
+Total simulation time: 23214494957.6358 ns, 23.2145 seconds
+Average time per token: 5667601.308017 ns
+
+Avg alpha rate: 0.992730
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LookAheadBatch, Data Migration = AlphaMigration
+Total simulation time: 22732633517.9044 ns, 22.7326 seconds
+Average time per token: 5549959.354957 ns
+
+Avg alpha rate: 0.978327
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LayerImportance, Data Migration = NoMigration
+Total simulation time: 22682416890.2652 ns, 22.6824 seconds
+Average time per token: 5537699.436100 ns
+
+Avg alpha rate: 0.976919
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LayerImportance, Data Migration = PriorMigration
+Total simulation time: 22682416890.2652 ns, 22.6824 seconds
+Average time per token: 5537699.436100 ns
+
+Avg alpha rate: 0.976919
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LayerImportance, Data Migration = SkippedTokensMigration
+Total simulation time: 22682416890.2652 ns, 22.6824 seconds
+Average time per token: 5537699.436100 ns
+
+Avg alpha rate: 0.976919
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LayerImportance, Data Migration = PastWindowMigration
+Total simulation time: 22662714940.7050 ns, 22.6627 seconds
+Average time per token: 5532889.389821 ns
+
+Avg alpha rate: 0.976327
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LayerImportance, Data Migration = LookAheadMigration
+Total simulation time: 23342775138.0179 ns, 23.3428 seconds
+Average time per token: 5698919.711430 ns
+
+Avg alpha rate: 0.992823
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LayerImportance, Data Migration = LookAheadBatchMigration
+Total simulation time: 23214502201.4406 ns, 23.2145 seconds
+Average time per token: 5667603.076524 ns
+
+Avg alpha rate: 0.992731
+--------------------------------------------------
+
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LayerImportance, Data Migration = AlphaMigration
+Total simulation time: 22662545953.0712 ns, 22.6625 seconds
+Average time per token: 5532848.133074 ns
+
+Avg alpha rate: 0.976322
+--------------------------------------------------
+
+
+
+0.7 model weight:
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = PreferHBM, Data Migration = NoMigration
+Total simulation time: 23161742154.5279 ns, 23.1617 seconds
+Average time per token: 5654722.205695 ns
+Avg alpha rate: 0.872302
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = PreferHBM, Data Migration = PriorMigration
+Total simulation time: 23164694755.0305 ns, 23.1647 seconds
+Average time per token: 5655443.055427 ns
+Avg alpha rate: 0.872375
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = PreferHBM, Data Migration = SkippedTokensMigration
+Total simulation time: 23166045363.2920 ns, 23.1660 seconds
+Average time per token: 5655772.793772 ns
+Avg alpha rate: 0.872426
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = PreferHBM, Data Migration = PastWindowMigration
+Total simulation time: 23135861236.9418 ns, 23.1359 seconds
+Average time per token: 5648403.622300 ns
+Avg alpha rate: 0.871500
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = PreferHBM, Data Migration = LookAheadMigration
+Total simulation time: 23563382169.2943 ns, 23.5634 seconds
+Average time per token: 5752778.849925 ns
+Avg alpha rate: 0.872395
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = PreferHBM, Data Migration = LookAheadBatchMigration
+Total simulation time: 23161742154.5279 ns, 23.1617 seconds
+Average time per token: 5654722.205695 ns
+Avg alpha rate: 0.872302
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = PreferHBM, Data Migration = AlphaMigration
+Total simulation time: 22677529116.2894 ns, 22.6775 seconds
+Average time per token: 5536506.131907 ns
+Avg alpha rate: 0.857830
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = SplitToken, Data Migration = NoMigration
+Total simulation time: 23139708463.1028 ns, 23.1397 seconds
+Average time per token: 5649342.886500 ns
+Avg alpha rate: 0.871629
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = SplitToken, Data Migration = PriorMigration
+Total simulation time: 23142050350.2840 ns, 23.1421 seconds
+Average time per token: 5649914.636300 ns
+Avg alpha rate: 0.871686
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = SplitToken, Data Migration = SkippedTokensMigration
+Total simulation time: 23143067987.4596 ns, 23.1431 seconds
+Average time per token: 5650163.082876 ns
+Avg alpha rate: 0.871725
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = SplitToken, Data Migration = PastWindowMigration
+Total simulation time: 23111574010.6849 ns, 23.1116 seconds
+Average time per token: 5642474.123702 ns
+Avg alpha rate: 0.870762
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = SplitToken, Data Migration = LookAheadMigration
+Total simulation time: 23563397959.2794 ns, 23.5634 seconds
+Average time per token: 5752782.704902 ns
+Avg alpha rate: 0.872395
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = SplitToken, Data Migration = LookAheadBatchMigration
+Total simulation time: 23161749401.6662 ns, 23.1617 seconds
+Average time per token: 5654723.975016 ns
+Avg alpha rate: 0.872302
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = SplitToken, Data Migration = AlphaMigration
+Total simulation time: 22669154816.7965 ns, 22.6692 seconds
+Average time per token: 5534461.625194 ns
+Avg alpha rate: 0.857591
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = BatchRatio, Data Migration = NoMigration
+Total simulation time: 23139864403.5759 ns, 23.1399 seconds
+Average time per token: 5649380.957904 ns
+Avg alpha rate: 0.871633
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = BatchRatio, Data Migration = PriorMigration
+Total simulation time: 23142050124.2296 ns, 23.1421 seconds
+Average time per token: 5649914.581111 ns
+Avg alpha rate: 0.871687
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = BatchRatio, Data Migration = SkippedTokensMigration
+Total simulation time: 23143242923.5444 ns, 23.1432 seconds
+Average time per token: 5650205.791881 ns
+Avg alpha rate: 0.871730
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = BatchRatio, Data Migration = PastWindowMigration
+Total simulation time: 23111555077.9296 ns, 23.1116 seconds
+Average time per token: 5642469.501448 ns
+Avg alpha rate: 0.870761
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = BatchRatio, Data Migration = LookAheadMigration
+Total simulation time: 23563382169.2943 ns, 23.5634 seconds
+Average time per token: 5752778.849925 ns
+Avg alpha rate: 0.872395
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = BatchRatio, Data Migration = LookAheadBatchMigration
+Total simulation time: 23161742154.5279 ns, 23.1617 seconds
+Average time per token: 5654722.205695 ns
+Avg alpha rate: 0.872302
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = BatchRatio, Data Migration = AlphaMigration
+Total simulation time: 22669719552.5109 ns, 22.6697 seconds
+Average time per token: 5534599.500125 ns
+Avg alpha rate: 0.857607
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LookAheadBatch, Data Migration = NoMigration
+Total simulation time: 23161742154.5279 ns, 23.1617 seconds
+Average time per token: 5654722.205695 ns
+Avg alpha rate: 0.872302
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LookAheadBatch, Data Migration = PriorMigration
+Total simulation time: 23164694755.0305 ns, 23.1647 seconds
+Average time per token: 5655443.055427 ns
+Avg alpha rate: 0.872375
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LookAheadBatch, Data Migration = SkippedTokensMigration
+Total simulation time: 23166045363.2920 ns, 23.1660 seconds
+Average time per token: 5655772.793772 ns
+Avg alpha rate: 0.872426
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LookAheadBatch, Data Migration = PastWindowMigration
+Total simulation time: 23135861236.9418 ns, 23.1359 seconds
+Average time per token: 5648403.622300 ns
+Avg alpha rate: 0.871500
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LookAheadBatch, Data Migration = LookAheadMigration
+Total simulation time: 23563382169.2943 ns, 23.5634 seconds
+Average time per token: 5752778.849925 ns
+Avg alpha rate: 0.872395
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LookAheadBatch, Data Migration = LookAheadBatchMigration
+Total simulation time: 23161742154.5279 ns, 23.1617 seconds
+Average time per token: 5654722.205695 ns
+Avg alpha rate: 0.872302
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LookAheadBatch, Data Migration = AlphaMigration
+Total simulation time: 22677529116.2894 ns, 22.6775 seconds
+Average time per token: 5536506.131907 ns
+Avg alpha rate: 0.857830
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LayerImportance, Data Migration = NoMigration
+Total simulation time: 22629491649.0573 ns, 22.6295 seconds
+Average time per token: 5524778.234633 ns
+Avg alpha rate: 0.856485
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LayerImportance, Data Migration = PriorMigration
+Total simulation time: 22629491649.0573 ns, 22.6295 seconds
+Average time per token: 5524778.234633 ns
+Avg alpha rate: 0.856485
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LayerImportance, Data Migration = SkippedTokensMigration
+Total simulation time: 22629491649.0573 ns, 22.6295 seconds
+Average time per token: 5524778.234633 ns
+Avg alpha rate: 0.856485
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LayerImportance, Data Migration = PastWindowMigration
+Total simulation time: 22609784762.5046 ns, 22.6098 seconds
+Average time per token: 5519966.983033 ns
+Avg alpha rate: 0.855893
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LayerImportance, Data Migration = LookAheadMigration
+Total simulation time: 23563397605.9316 ns, 23.5634 seconds
+Average time per token: 5752782.618636 ns
+Avg alpha rate: 0.872395
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LayerImportance, Data Migration = LookAheadBatchMigration
+Total simulation time: 23161749401.6662 ns, 23.1617 seconds
+Average time per token: 5654723.975016 ns
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LayerImportance, Data Migration = LookAheadBatchMigration
+HBM initial utilizaiton rate: 99.4015247263807%.
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LayerImportance, Data Migration = LookAheadBatchMigration
+Total simulation time: 23161749401.6662 ns, 23.1617 seconds
+Average time per token: 5654723.975016 ns
+Avg alpha rate: 0.872302
+--------------------------------------------------
+HBM initial utilizaiton rate: 99.4015247263807%.
+Combination: Data Placement = LayerImportance, Data Migration = AlphaMigration
+Total simulation time: 22609615134.8279 ns, 22.6096 seconds
+Average time per token: 5519925.570026 ns
+Avg alpha rate: 0.855888
+--------------------------------------------------
