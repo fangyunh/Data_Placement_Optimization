@@ -41,9 +41,9 @@ class BaseStrategy(ABC):
     def initialize_memory(self):
         """Initialize HBM with model parameters and KV cache."""
         self.cfg.C_HBM = 0.0
-        model_size = self.cfg.para_num * self.cfg.dtype_size
+        model_size = self.cfg.para_num * self.cfg.dtype_size * self.cfg.model_weight_ratio
         self.store_data(model_size)
-        prev_kv_cache_size = 2 * self.cfg.d * self.cfg.dtype_size * self.cfg.N_pre
+        prev_kv_cache_size = 2 * self.cfg.d * self.cfg.dtype_size * self.cfg.N_pre * self.cfg.model_weight_ratio
         self.store_data(prev_kv_cache_size)
         print(f"HBM initial utilizaiton rate: {self.cfg.C_HBM/self.cfg.C_HBM_max * 100}%.")
 
@@ -282,11 +282,21 @@ class AlphaLayersDistribution(BaseStrategy):
                 count += 1
 
         _, D_W = self.calculate_data_sizes(n, l, s)
-
-        if ((count / (n+1)) < self.ratio):
+        if (n == 0):
             if (self.store_data(D_W)):
                 self.mig.update_token_layer(n, l, 0)
                 return 1.0
             else:
                 self.mig.update_token_layer(n, l, 1)
                 return 0.0
+            
+        if ((count / n) < self.ratio):
+            if (self.store_data(D_W)):
+                self.mig.update_token_layer(n, l, 0)
+                return 1.0
+            else:
+                self.mig.update_token_layer(n, l, 1)
+                return 0.0
+        else:
+            self.mig.update_token_layer(n, l, 1)
+            return 0.0
