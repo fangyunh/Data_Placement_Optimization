@@ -392,7 +392,7 @@ class LookAheadBatchMigration(BaseDataMigration):
 class AlphaMigration(BaseDataMigration):
     def __init__(self, config, placement):
         super().__init__(config, placement)
-        self.batch_size = 50
+        self.batch_size = 16
 
     def migration_strategy(self, n: int, l: int, s: int) -> tuple[float, float]:
         layer_size = self.get_layer_size()
