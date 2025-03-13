@@ -91,3 +91,10 @@ When **part of the model weights** are on the HBM (0.8 model weights and prefill
 - initial states：model weights如何分部，prefill的kv cache如何分部
 - passive data migration：在这一层从ext mem 来的KV cache是否需要移动到HBM，可以节省读的bandwidth
 - 不同level的token skipping：不skip，skip 30%，60%， 100%（model weight）
+
+Next step (Mar 13)
+
+- compute一个loose upper bound, 没有data migration，所有alpha读都是按照最佳比例或HBM的极限
+- 找一个开源模型，run一下看看attention score，自己derive 的token importance不可靠，需要benchmark或者真实的
+- 把实验补完，尽可能模拟出来不同的dimension，比如inclusive exclusive区别；generate token number小或者很大；skipping
+  的sparsity；在图表里最好能尽可能的显示出区别
