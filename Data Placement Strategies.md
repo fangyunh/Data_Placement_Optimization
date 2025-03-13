@@ -97,4 +97,5 @@ Next step (Mar 13)
 - compute一个loose upper bound, 没有data migration，所有alpha读都是按照最佳比例或HBM的极限
 - 找一个开源模型，run一下看看attention score，自己derive 的token importance不可靠，需要benchmark或者真实的
 - 把实验补完，尽可能模拟出来不同的dimension，比如inclusive exclusive区别；generate token number小或者很大；skipping
-  的sparsity；在图表里最好能尽可能的显示出区别
+  的sparsity；在图表里最好能尽可能的显示出区别，来证明我们的work是有意义的
+- 思考一下contribution在哪里。我们这个work相当于提出了一个问题，并想办法提出一个解决方案：比如HBM的usage，如何placement最优
