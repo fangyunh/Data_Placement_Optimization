@@ -2,21 +2,22 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import random
-from migration import load_trace
-from placement import ModelConfig, PreferHBM, SplitToken, BatchRatio, LookAheadBatch, LayerImportance, AlphaLayersDistribution
-from migration import NoMigration, PriorMigration, SkippedTokensMigration, PastWindowMigration, LookAheadMigration, LookAheadBatchMigration, AlphaMigration
+from memory_status import ModelConfig, MemStatus
+from placement import BaseStrategy, PreferHBM, SplitToken, BatchRatio, LookAheadBatch, LayerImportance, AlphaLayersDistribution
+from migration import BaseDataMigration, NoMigration, PriorMigration, SkippedTokensMigration, PastWindowMigration, LookAheadMigration, LookAheadBatchMigration, AlphaMigration
 
 BYTES_TO_GB = 1024**3
 
 
 class MemorySimulator:
-    def __init__(self, config: ModelConfig, strategy, migration):
+    def __init__(self, config: ModelConfig, strategy, migration, HBM_inclusive, trace_file):
         self.cfg = config
         self.stg = strategy
         self.mig = migration
+        self.is_inclusive = HBM_inclusive
         self.total_time = 0.0
         self.step_details = []
-        self.trace = load_trace()
+        self.trace = load_trace(trace_file)
 
 
     def calculate_step_time(self, n: int, l: int, s: int, 
@@ -24,7 +25,8 @@ class MemorySimulator:
         """Calculate time consumption for one step"""
         # Calculate data sizes
         D_R, D_W = self.stg.calculate_data_sizes(n, l, s)
-        
+        # should modify the way to calculate time, inclusive / exclusive
+        # represents the ratio of KV cache.
         # Calculate HBM time
         HBM_read = alpha * D_R
         HBM_write = beta * D_W
@@ -57,7 +59,7 @@ class MemorySimulator:
         self.total_time = 0.0
         self.step_details = []
 
-        for n in range(self.cfg.N):
+        for n in range(self.cfg.N_pre, self.cfg.N_pre + self.cfg.N):
             for l in range(self.cfg.L):
                 for s in [0, 1]:  # MHA and MLP
                     step_info = self.mig.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})

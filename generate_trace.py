@@ -1,4 +1,5 @@
 import random
+# modify to include prefill tokens
 
 # Configuration parameters
 N = 4096         # total tokens (should match ModelConfig.N)
