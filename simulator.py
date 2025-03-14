@@ -2,6 +2,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import random
+from abc import ABC, abstractmethod
 from memory_status import ModelConfig, MemStatus, HBMInit, TokenLevelBestRatioInit
 from placement import BaseStrategy, PreferHBM, SplitToken, BatchRatio, LookAheadBatch, LayerImportance, AlphaLayersDistribution
 from migration import BaseDataMigration, NoMigration, PriorMigration, SkippedTokensMigration, PastWindowMigration, LookAheadMigration, LookAheadBatchMigration, AlphaMigration
@@ -9,7 +10,7 @@ from migration import BaseDataMigration, NoMigration, PriorMigration, SkippedTok
 BYTES_TO_GB = 1024**3
 
 
-class MemorySimulator:
+class MemorySimulator(ABC):
     def __init__(self, config: ModelConfig, status: MemStatus,
                 placement: BaseStrategy, migration: BaseDataMigration):
         self.cfg = config
@@ -19,9 +20,9 @@ class MemorySimulator:
         self.total_time = 0.0
         self.step_details = []
 
-
+    @abstractmethod
     def calculate_step_time(self, n: int, l: int, s: int, 
-                       alpha: float, beta: float, 
+                       alpha, beta: float, 
                        hbm_MR: float, hbm_MW: float,
                        ext_MR: float, ext_MW: float):
         """Calculate time consumption for one step"""
@@ -103,12 +104,60 @@ class MemorySimulator:
                     })
         return self.total_time
 
+class BestMemorySimulator(MemorySimulator):
+    def __init__(self, config, status, placement, migration):
+        super().__init__(config, status, placement, migration)
+    
+    def calculate_step_time(self, n: int, l: int, s: int, 
+                       alpha, beta: float, 
+                       hbm_MR: float, hbm_MW: float,
+                       ext_MR: float, ext_MW: float):
+        """Calculate time consumption for one step"""
+        # Calculate data sizes
+        D_R, D_W = self.status.calculate_data_sizes(n, l, s)
+        # should modify the way to calculate time, inclusive / exclusive
+        # represents the ratio of KV cache.
+        # Calculate HBM time
+
+        alpha_determined = min(self.cfg.C_HBM_max / D_R, self.cfg.best_alpha)
+        
+        if self.status.inclusive:
+            beta_ext = 1.0
+        else:
+            beta_ext = 1 - beta
+
+        HBM_read = alpha_determined * D_R
+        HBM_write = beta * D_W
+        HBM_migration = hbm_MR + hbm_MW
+        T_HBM = (HBM_read + HBM_write + HBM_migration) / self.cfg.B_HBM  # in ns
+        
+        
+        # New external read calculation using interface vs internal minimum
+        ext_read = (1 - alpha_determined) * D_R / min(self.cfg.B_ext_interface_R, 
+                                        self.cfg.B_ext_internal)
+        
+        # New write + migration calculation
+        write_migration = 0.0
+        internal_migration = 0.0
+
+        write_migration = (beta_ext * D_W + ext_MW) / self.cfg.B_ext_interface_W if self.cfg.B_ext_interface_R > 0 else 0
+        internal_migration = (beta_ext * D_W + ext_MW + ext_MR) / self.cfg.B_ext_internal if self.cfg.B_ext_internal > 0 else 0
+        read_migration = ext_MR / self.cfg.B_ext_interface_R if self.cfg.B_ext_interface_R > 0 else 0
+        
+        ext_write_migration = max(write_migration, read_migration, internal_migration)
+        
+        T_ext = ext_read + ext_write_migration
+        
+        return max(T_HBM, T_ext)
+    
+
 if __name__ == "__main__":
     # Initialize configuration
     filename = "trace.txt"
     config = ModelConfig()
 
-
+    # add bset time calculation
+    
     # List of placement strategies from placement.py.
     # placement_classes = [PreferHBM, SplitToken, BatchRatio, LookAheadBatch, LayerImportance]
     placement_classes = [LayerImportance, AlphaLayersDistribution]

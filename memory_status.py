@@ -188,11 +188,14 @@ class MemStatus(ABC):
         effective_KV_cache = count_hbm * self.get_single_KV_cache_size()
         
         max_alpha = (effective_model_weight + effective_KV_cache) / D_R
-
+        
         # Calculate the best alpha for inclusive HBM
         best_HBM_tokens = math.floor(self.cfg.best_alpha * count_tot_tokens)
         best_effective_KV_cahe = min(best_HBM_tokens, count_hbm) * self.get_single_KV_cache_size()
-        best_alpha = (effective_model_weight + best_effective_KV_cahe) / D_R
+        if self.inclusive:
+            best_alpha = (model_weight_component * self.cfg.best_alpha + best_effective_KV_cahe) / D_R
+        else:
+            best_alpha = (effective_model_weight + best_effective_KV_cahe) / D_R
         # Ensure alpha is within [0, 1]
         return [max(0.0, min(max_alpha, 1.0)), max(0.0, min(best_alpha, 1.0))]
     

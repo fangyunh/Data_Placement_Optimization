@@ -22,6 +22,7 @@ class BaseStrategy(ABC):
     def beta_strategy(self, n: int, l: int, s: int) -> float:
         """Define fraction of writes to HBM."""
         pass
+        
 
 class PreferHBM(BaseStrategy):
     def __init__(self, config: ModelConfig, status: MemStatus):
