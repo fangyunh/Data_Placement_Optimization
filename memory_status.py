@@ -51,7 +51,7 @@ def load_trace(filename="trace.txt"):
     return trace
 
 # Records each token's KV caches store at where
-class MemStatus:
+class MemStatus(ABC):
     def __init__(self, config: ModelConfig, filename, weight_on_HBM, is_inclusive: bool):
         self.trace = load_trace(filename)
         self.cfg = config
@@ -158,7 +158,7 @@ class MemStatus:
 
     def max_and_best_alphas(self, n: int, l: int, s: int):
         if s == 1:
-            return self.model_weight_ratio
+            return [self.model_weight_ratio, self.model_weight_ratio]
         
         D_R, _ = self.calculate_data_sizes(n, l, s)
         if D_R <= 0:
