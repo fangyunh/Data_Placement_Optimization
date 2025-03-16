@@ -1,7 +1,6 @@
 import random
 import numpy as np
 import csv
-import re
 import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -32,30 +31,10 @@ class ModelConfig():
         self.N_pre: int = N_pre   # Previous tokens from prefilling 1.71GB
         self.best_alpha = self.B_HBM / (self.B_HBM + min(self.B_ext_interface_R, self.B_ext_internal))
 
-
-def load_trace(filename="trace.txt"):
-    trace = {}
-    pattern = re.compile(r"^([^,]+),([^,]+),([^,]+),(\[.*?\]),(.+)$")
-
-    with open(filename, "r") as f:
-        next(f)  # Skip header if there is one
-        for line in f:
-            line = line.strip()
-            m = pattern.match(line)
-            if m:
-                n, l, s, skip_token_kv_str, skip_layer_str = m.groups()
-                n, l, s = int(n), int(l), int(s)
-                skip_token_kv = eval(skip_token_kv_str)  # Note: using eval can be dangerous if the file is untrusted
-                skip_layer = skip_layer_str.strip().lower() == "true"
-                trace[(n, l, s)] = {"skip_token_kv": skip_token_kv, "skip_layer": skip_layer}
-            else:
-                raise ValueError("Line doesn't match expected format: " + line)
-    return trace
-
 # Records each token's KV caches store at where
 class MemStatus(ABC):
-    def __init__(self, config: ModelConfig, filename, weight_on_HBM, is_inclusive: bool):
-        self.trace = load_trace(filename)
+    def __init__(self, config: ModelConfig, trace, weight_on_HBM, is_inclusive: bool):
+        self.trace = trace
         self.cfg = config
         self.token_layer_status = {}
         self.total_model_weights: float =  self.cfg.para_num * self.cfg.dtype_size 
@@ -213,8 +192,8 @@ class MemStatus(ABC):
 # Firstly, records model weights and prefill KV cache in the HBM.
 # IF the space is not enough, store in the external memory.
 class HBMInit(MemStatus):
-    def __init__(self, config, filename, weight_on_HBM, is_inclusive):
-        super().__init__(config, filename, weight_on_HBM, is_inclusive)
+    def __init__(self, config, trace, weight_on_HBM, is_inclusive):
+        super().__init__(config, trace, weight_on_HBM, is_inclusive)
     
     def initial_tokens_placement(self):
         print(f"Start HBMInit initialization")
@@ -231,8 +210,8 @@ class HBMInit(MemStatus):
 
 # Store best ratio of prefill tokens on HBM (token level)
 class TokenLevelBestRatioInit(MemStatus):
-    def __init__(self, config, filename, weight_on_HBM, is_inclusive):
-        super().__init__(config, filename, weight_on_HBM, is_inclusive)
+    def __init__(self, config, trace, weight_on_HBM, is_inclusive):
+        super().__init__(config, trace, weight_on_HBM, is_inclusive)
     
     def initial_tokens_placement(self):
         print(f"Start TokenLevelInit initialization")

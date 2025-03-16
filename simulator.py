@@ -7,8 +7,29 @@ from memory_status import ModelConfig, MemStatus, HBMInit, TokenLevelBestRatioIn
 from placement import BaseStrategy, PreferHBM, SplitToken, BatchRatio, LookAheadBatch, LayerImportance, AlphaLayersDistribution
 from migration import BaseDataMigration, NoMigration, PriorMigration, SkippedTokensMigration, PastWindowMigration, LookAheadMigration, LookAheadBatchMigration, AlphaMigration
 import copy
+import csv
+import re
 
 BYTES_TO_GB = 1024**3
+
+def load_trace(filename="trace.txt"):
+    trace = {}
+    pattern = re.compile(r"^([^,]+),([^,]+),([^,]+),(\[.*?\]),(.+)$")
+
+    with open(filename, "r") as f:
+        next(f)  # Skip header if there is one
+        for line in f:
+            line = line.strip()
+            m = pattern.match(line)
+            if m:
+                n, l, s, skip_token_kv_str, skip_layer_str = m.groups()
+                n, l, s = int(n), int(l), int(s)
+                skip_token_kv = eval(skip_token_kv_str)  # Note: using eval can be dangerous if the file is untrusted
+                skip_layer = skip_layer_str.strip().lower() == "true"
+                trace[(n, l, s)] = {"skip_token_kv": skip_token_kv, "skip_layer": skip_layer}
+            else:
+                raise ValueError("Line doesn't match expected format: " + line)
+    return trace
 
 
 class MemorySimulator(ABC):
@@ -110,6 +131,7 @@ def run_simulation(init_class: MemStatus, config_params: dict,
                   mig_classes: list, plc_classes: list):
     """Run simulation with specified initialization class and config parameters"""
     fn = config_params.get('filename', "trace.txt")
+    
     # Create config with custom parameters
     config = ModelConfig(
         N=config_params.get('N', 1024*10),
@@ -124,11 +146,13 @@ def run_simulation(init_class: MemStatus, config_params: dict,
 
     # Run simulation for this initialization class
     config_temp = copy.deepcopy(config)
-    initial_state_clean = init_class(config_temp, fn, 
+    trace = load_trace(fn)
+    initial_state_clean = init_class(config_temp, trace, 
                                    config_temp.best_alpha, is_inclusive=False)
     
     # Rest of the original simulation logic...
     initial_state_temp = copy.deepcopy(initial_state_clean)
+    initial_state_temp.trace = trace
     best_mig = NoMigration(initial_state_temp.cfg, initial_state_temp)
     best_plc = PreferHBM(initial_state_temp.cfg, initial_state_temp)
     best_simulator = MemorySimulator(initial_state_temp.cfg, initial_state_temp, best_plc, best_mig, best=True)
@@ -144,6 +168,7 @@ def run_simulation(init_class: MemStatus, config_params: dict,
     for p_cls in placement_classes:
         for m_cls in migration_classes:
             test_initial_state = copy.deepcopy(initial_state_clean)
+            test_initial_state.trace = trace
             mig_instance = m_cls(test_initial_state.cfg, test_initial_state)
             placement_instance = p_cls(test_initial_state.cfg, test_initial_state)
             
