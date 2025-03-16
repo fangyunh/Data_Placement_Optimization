@@ -5,14 +5,16 @@ from datetime import datetime
 
 experiments = [
     {
-        'N': 1024*10,
-        'N_pre': 1024*2,
-        'para_num': 0.5,
-        'C_HBM_max': 3,
-        'filename': '03_2_10.txt',
+        'N': 1024*4,
+        'N_pre': 512,
+        'para_num': 0.25,
+        'C_HBM_max': 1,
+        'filename': '03_05_4.txt',
         'init_class': 'HBMInit',
-        'mig_classes': ['NoMigration', 'AlphaMigration'],
-        'plc_classes': ['PreferHBM', 'BatchRatio']
+        # 'mig_classes': ['NoMigration', 'AlphaMigration'],
+        'mig_classes': ['LookAheadBatchMigration', ],
+        # 'plc_classes': ['PreferHBM', 'BatchRatio']
+        'plc_classes': ['LookAheadBatch', 'AlphaLayersDistribution']
     }
     # {
     #     'N': 1024*10,

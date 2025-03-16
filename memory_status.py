@@ -48,7 +48,7 @@ class MemStatus(ABC):
     def initialize_memory(self):
         """Initialize HBM with model parameters and KV cache."""
         self.cfg.C_HBM = 0.0
-        HBM_model_size = self.cfg.para_num * self.cfg.dtype_size * self.model_weight_ratio
+        HBM_model_size = self.total_model_weights * self.model_weight_ratio
         self.store_data(HBM_model_size)
 
         self.initial_tokens_placement()
