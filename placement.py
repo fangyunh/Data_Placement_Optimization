@@ -116,10 +116,12 @@ class LookAheadBatch(BaseStrategy):
             self.status.update_token_layer(n, l, 2)
             return 0.0
         
-        batch_size = 16
+        batch_size = 1024
         # Gather skip lists from tokens n+1 to n+batch_size for the same (l, s)
         batch_skip_lists = []
         for j in range(1, batch_size + 1):
+            if (n + j) >= self.cfg.N_pre + self.cfg.N:
+                break
             key = (n + j, l, s)
             info = self.status.trace.get(key, {"skip_token_kv": [], "skip_layer": False})
             batch_skip_lists.append(set(info["skip_token_kv"]))
@@ -146,7 +148,7 @@ class LayerImportance(BaseStrategy):
     def beta_strategy(self, n, l, s):
         if s == 1:
             return 0.0
-        limit = 20
+        limit = 50
         count = 0
         for token_id, layer_status in self.status.token_layer_status.items():
             if layer_status[l] == 2:

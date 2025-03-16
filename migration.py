@@ -234,7 +234,7 @@ class LookAheadMigration(BaseDataMigration):
 class LookAheadBatchMigration(BaseDataMigration):
     def __init__(self, config, status):
         super().__init__(config, status)
-        self.batch_size = 50
+        self.batch_size = 16
 
     def migration_strategy(self, n: int, l: int, s: int) -> tuple[float, float, float, float]:
         hbm_MR = 0.0 
@@ -242,11 +242,9 @@ class LookAheadBatchMigration(BaseDataMigration):
         ext_MR = 0.0
         ext_MW = 0.0
         
-        step_info = self.status.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
-        skipped_tokens = step_info["skip_token_kv"]
+        # step_info = self.status.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
+        # skipped_tokens = step_info["skip_token_kv"]
         layer_size = self.status.get_single_KV_cache_size()
-
-        full = False
 
         # Gather skip lists from tokens n+1 to n+batch_size for the same (l, s)
         batch_skip_lists = []
@@ -263,38 +261,33 @@ class LookAheadBatchMigration(BaseDataMigration):
         
         # PART 1: Migrate out layers for tokens that are consistently skipped.
         for token in consistent_skipped:
-            self.initialize_token(token)
-            for layer in range(self.cfg.L):
-                if self.status.get_layer_location(token, layer) == 0:
-                    # Update layer status to external memory.
-                    self.status.update_token_layer(token, layer, 1)
-                    # Decrease HBM occupancy.
-                    self.cfg.C_HBM -= layer_size
-                    if layer != l or token in skipped_tokens:
-                        hbm_MR += layer_size
-                    ext_MW += layer_size
+            self.status.initialize_token(token)
+            if self.status.get_layer_location(token, l) == 0:
+                # Update layer status to external memory.
+                self.status.update_token_layer(token, l, 1)
+                # Decrease HBM occupancy.
+                self.cfg.C_HBM -= layer_size
+                
+                hbm_MR += layer_size
+                ext_MW += layer_size
         
         # PART 2: For tokens that are not consistently skipped, try to migrate in layers.
         # Iterate over all tokens we have tracked.
         for token, layer_status in self.status.token_layer_status.items():
             if token in consistent_skipped:
                 continue  # Skip tokens already processed.
-            self.initialize_token(token)
-            for layer in range(self.cfg.L):
-                # If a layer is in external memory (status 1), attempt to migrate it into HBM.
-                if self.status.get_layer_location(token, layer) == 1:
-                    if self.status.store_data(layer_size):
-                        # Migrate in: update layer status from 1 (External) to 0 (HBM).
-                        self.status.update_token_layer(token, layer, 0)
+            self.status.initialize_token(token)
+            # If a layer is in external memory (status 1), attempt to migrate it into HBM.
+            if self.status.get_layer_location(token, l) == 1:
+                if self.status.store_data(layer_size):
+                    # Migrate in: update layer status from 1 (External) to 0 (HBM).
+                    self.status.update_token_layer(token, l, 0)
+                
+                    hbm_MW += layer_size
                     
-                        hbm_MW += layer_size
-                        if layer != l or token in skipped_tokens:
-                            ext_MR += layer_size
-                    else:
-                        full = True
-                        break
-            if full:
-                break
+                    ext_MR += layer_size
+                else:
+                    break
                 
         
         if self.status.inclusive:
@@ -346,8 +339,7 @@ class AlphaMigration(BaseDataMigration):
                         self.status.update_token_layer(token, next_l, 1)
                         # Decrease HBM occupancy.
                         self.cfg.C_HBM -= layer_size
-                        if next_l != l or token in skipped_tokens:
-                            hbm_MR += layer_size
+                        hbm_MR += layer_size
                         ext_MW += layer_size
                         adjusted = True
                         break
@@ -362,12 +354,14 @@ class AlphaMigration(BaseDataMigration):
                 for token in self.status.token_layer_status.keys():
                     if self.status.get_layer_location(token, next_l) == 1:
                         if self.status.store_data(layer_size):
+                            if token in skipped_tokens:
+                                continue
+                            
                             # Migrate in: update layer status from 1 (External) to 0 (HBM).
                             self.status.update_token_layer(token, next_l, 0)
                         
                             hbm_MW += layer_size
-                            if next_l != l or token in skipped_tokens:
-                                ext_MR += layer_size
+                            ext_MR += layer_size
                             adjusted = True
                             break
                         else:

@@ -8,27 +8,29 @@ from dataclasses import dataclass
 BYTES_TO_GB = 1024**3
 
 @dataclass
-class ModelConfig:
+class ModelConfig():
     # Model architecture parameters
     # llama 3.3
-    L: int = 32          # Number of layers
-    d: int = 4096        # Hidden dimension
-    h: int = 32          # Number of attention heads
-    d_ff: int = 16384    # Feed-forward dimension
-    dtype_size: int = 2  # Bytes per parameter (e.g., 2 for FP16)
-    para_num: int = 8000000000 # how many parameters in the model
-    
-    # Memory parameters
-    B_HBM: float = 4915  # HBM bandwidth in GB/s  e.g 4.8TB/s  B/ns
-    B_ext_interface_R: float = 900  # External memory interface read (GB/s) B/ns
-    B_ext_interface_W: float = 900  # External memory interface write (GB/s) B/ns
-    B_ext_internal: float = 1900    # External memory internal bandwidth (GB/s) B/ns
-    C_HBM_max: float = 32 * BYTES_TO_GB          # HBM capacity in B
-    C_HBM: float = 0.0
-    # Inference parameters
-    N: int = 4096         # Total tokens
-    N_pre: int = 32000     # Previous tokens from prefilling
-    best_alpha = B_HBM / (B_HBM + min(B_ext_interface_R, B_ext_internal))
+    def __init__(self, N=1024*2, N_pre=1024*2, para_num=0.5, 
+                C_HBM_max=3):
+        self.L: int = 32          # Number of layers
+        self.d: int = 4096        # Hidden dimension
+        self.h: int = 32          # Number of attention heads
+        self.d_ff: int = 16384    # Feed-forward dimension
+        self.dtype_size: int = 2  # Bytes per parameter (e.g., 2 for FP16)
+        self.para_num: int = para_num * 1000000000 # how many parameters in the model 2B 4GB
+        
+        # Memory parameters
+        self.B_HBM: float = 4915  # HBM bandwidth in GB/s  e.g 4.8TB/s  B/ns
+        self.B_ext_interface_R: float = 900  # External memory interface read (GB/s) B/ns
+        self.B_ext_interface_W: float = 900  # External memory interface write (GB/s) B/ns
+        self.B_ext_internal: float = 1900    # External memory internal bandwidth (GB/s) B/ns
+        self.C_HBM_max: float = C_HBM_max * BYTES_TO_GB          # HBM capacity in B, 10GB
+        self.C_HBM: float = 0.0
+        # Inference parameters
+        self.N: int = N       # Total tokens 2GB
+        self.N_pre: int = N_pre   # Previous tokens from prefilling 1.71GB
+        self.best_alpha = self.B_HBM / (self.B_HBM + min(self.B_ext_interface_R, self.B_ext_internal))
 
 
 def load_trace(filename="trace.txt"):
@@ -67,7 +69,7 @@ class MemStatus(ABC):
     def initialize_memory(self):
         """Initialize HBM with model parameters and KV cache."""
         self.cfg.C_HBM = 0.0
-        HBM_model_size = self.cfg.para_num * self.cfg.dtype_size * self.cfg.model_weight_ratio
+        HBM_model_size = self.cfg.para_num * self.cfg.dtype_size * self.model_weight_ratio
         self.store_data(HBM_model_size)
 
         self.initial_tokens_placement()
@@ -157,12 +159,15 @@ class MemStatus(ABC):
         return D_R, D_W
 
     def max_and_best_alphas(self, n: int, l: int, s: int):
-        if s == 1:
-            return [self.model_weight_ratio, self.model_weight_ratio]
-        
         D_R, _ = self.calculate_data_sizes(n, l, s)
         if D_R <= 0:
-            return 0.0
+            return [0.0, 0.0]
+        
+        if s == 1:
+            if self.inclusive:
+                return [self.model_weight_ratio, min(self.cfg.best_alpha, self.model_weight_ratio)]
+            else:
+                return [self.model_weight_ratio, self.model_weight_ratio]
         
         # Model weight part: assume that the model weight component in D_R is 4*d^2*dtype_size.
         model_weight_component = self.get_layer_md_weight_size()
@@ -190,12 +195,13 @@ class MemStatus(ABC):
         max_alpha = (effective_model_weight + effective_KV_cache) / D_R
         
         # Calculate the best alpha for inclusive HBM
+        best_alpha = 0.0
         best_HBM_tokens = math.floor(self.cfg.best_alpha * count_tot_tokens)
         best_effective_KV_cahe = min(best_HBM_tokens, count_hbm) * self.get_single_KV_cache_size()
         if self.inclusive:
-            best_alpha = (model_weight_component * self.cfg.best_alpha + best_effective_KV_cahe) / D_R
-        else:
-            best_alpha = (effective_model_weight + best_effective_KV_cahe) / D_R
+            best_alpha = (model_weight_component * min(self.cfg.best_alpha, self.model_weight_ratio) 
+                        + best_effective_KV_cahe) / D_R
+            
         # Ensure alpha is within [0, 1]
         return [max(0.0, min(max_alpha, 1.0)), max(0.0, min(best_alpha, 1.0))]
     
@@ -207,10 +213,11 @@ class MemStatus(ABC):
 # Firstly, records model weights and prefill KV cache in the HBM.
 # IF the space is not enough, store in the external memory.
 class HBMInit(MemStatus):
-    def __init__(self, config, filename, weight_on_HBM):
-        super().__init__(config, filename, weight_on_HBM)
+    def __init__(self, config, filename, weight_on_HBM, is_inclusive):
+        super().__init__(config, filename, weight_on_HBM, is_inclusive)
     
     def initial_tokens_placement(self):
+        print(f"Start HBMInit initialization")
         kv_cache_size = self.get_single_KV_cache_size()
         # store prefill tokens on HBM until full
         for n in range (self.cfg.N_pre):
@@ -219,14 +226,16 @@ class HBMInit(MemStatus):
                     self.update_token_layer(n, l, 0)
                 else:
                     self.update_token_layer(n, l, 1)
+        print(f"End HBMInit initialization")
 
 
 # Store best ratio of prefill tokens on HBM (token level)
 class TokenLevelBestRatioInit(MemStatus):
-    def __init__(self, config, filename, weight_on_HBM):
-        super().__init__(config, filename, weight_on_HBM)
+    def __init__(self, config, filename, weight_on_HBM, is_inclusive):
+        super().__init__(config, filename, weight_on_HBM, is_inclusive)
     
     def initial_tokens_placement(self):
+        print(f"Start TokenLevelInit initialization")
         kv_cache_size = self.get_single_KV_cache_size()
         batch = 32
         on_HBM_tokens = math.floor(batch * self.cfg.best_alpha)
@@ -239,4 +248,5 @@ class TokenLevelBestRatioInit(MemStatus):
                         self.update_token_layer(n, l, 1)
                 else:
                     self.update_token_layer(n, l, 1)
+        print(f"End TokenLevelInit initialization")
 
