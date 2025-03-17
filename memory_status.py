@@ -13,9 +13,9 @@ class ModelConfig():
     def __init__(self, N=1024*2, N_pre=1024*2, para_num=0.5, 
                 C_HBM_max=3):
         self.L: int = 32          # Number of layers
-        self.d: int = 16384        # Hidden dimension 3.g. 8192
+        self.d: int = 8192        # Hidden dimension 3.g. 8192
         self.h: int = 32          # Number of attention heads
-        self.d_ff: int = 8192    # Feed-forward dimension e.e. 16384
+        self.d_ff: int = 16384    # Feed-forward dimension e.e. 16384
         self.dtype_size: int = 2  # Bytes per parameter (e.g., 2 for FP16)
         self.para_num: int = para_num * 1000000000 # how many parameters in the model 2B 4GB
         
@@ -33,7 +33,7 @@ class ModelConfig():
 
 # Records each token's KV caches store at where
 class MemStatus(ABC):
-    def __init__(self, config: ModelConfig, trace, weight_on_HBM, is_inclusive: bool):
+    def __init__(self, config: ModelConfig, trace, is_inclusive: bool):
         self.trace = trace
         self.cfg = config
         self.token_layer_status = {}
@@ -41,7 +41,7 @@ class MemStatus(ABC):
         self.start_token_id = self.cfg.N_pre
         # memory threshold rate
         self.threshold = 0.99
-        self.model_weight_ratio = weight_on_HBM
+        # self.model_weight_ratio = 1.0
         self.inclusive = is_inclusive
         self.initialize_memory()
     
@@ -192,9 +192,11 @@ class MemStatus(ABC):
 # Firstly, records model weights and prefill KV cache in the HBM.
 # IF the space is not enough, store in the external memory.
 class HBMInit(MemStatus):
-    def __init__(self, config, trace, weight_on_HBM, is_inclusive):
-        super().__init__(config, trace, weight_on_HBM, is_inclusive)
-    
+    def __init__(self, config, trace, is_inclusive):
+        self.model_weight_ratio = 1.0
+        super().__init__(config, trace, is_inclusive)
+        
+
     def initial_tokens_placement(self):
         print(f"Start HBMInit initialization")
         kv_cache_size = self.get_single_KV_cache_size()
@@ -210,9 +212,11 @@ class HBMInit(MemStatus):
 
 # Store best ratio of prefill tokens on HBM (token level)
 class TokenLevelBestRatioInit(MemStatus):
-    def __init__(self, config, trace, weight_on_HBM, is_inclusive):
-        super().__init__(config, trace, weight_on_HBM, is_inclusive)
-    
+    def __init__(self, config, trace, is_inclusive):
+        self.model_weight_ratio = 0.845
+        super().__init__(config, trace, is_inclusive)
+        
+
     def initial_tokens_placement(self):
         print(f"Start TokenLevelInit initialization")
         kv_cache_size = self.get_single_KV_cache_size()

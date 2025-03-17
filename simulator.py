@@ -147,8 +147,7 @@ def run_simulation(init_class: MemStatus, config_params: dict,
     # Run simulation for this initialization class
     config_temp = copy.deepcopy(config)
     trace = load_trace(fn)
-    initial_state_clean = init_class(config_temp, trace, 
-                                    weight_on_HBM=0.845, is_inclusive=False)
+    initial_state_clean = init_class(config_temp, trace, is_inclusive=False)
     
     # Rest of the original simulation logic...
     initial_state_temp = copy.deepcopy(initial_state_clean)
@@ -180,6 +179,9 @@ def run_simulation(init_class: MemStatus, config_params: dict,
             print(f"Combination: {p_cls.__name__} + {m_cls.__name__}")
             print(f"Total time: {total_time:.4f} ns, {total_time/1e9:.4f} seconds")
             print(f"Avg alpha: {avg_alpha:.6f}")
+            print(f"Alphas:")
+            for step in simulator.step_details:
+                print(f"{step['alpha']:.4f}")
             print("-" * 50)
     
     return

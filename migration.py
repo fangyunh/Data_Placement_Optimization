@@ -307,9 +307,7 @@ class AlphaMigration(BaseDataMigration):
         hbm_MW = 0.0
         ext_MR = 0.0
         ext_MW = 0.0
-        
-        step_info = self.status.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
-        skipped_tokens = step_info["skip_token_kv"]
+
         deviation = 0.005
         next_n = n
         next_l = l + 1
@@ -323,7 +321,20 @@ class AlphaMigration(BaseDataMigration):
             return [0.0, 0.0, 0.0, 0.0] 
         
         if s != 0:
-            return [0.0, 0.0, 0.0, 0.0] 
+            return [0.0, 0.0, 0.0, 0.0]
+
+        step_info = self.status.trace.get((next_n, next_l, next_s), {"skip_token_kv": [], "skip_layer": False})
+        skipped_tokens = step_info["skip_token_kv"]
+
+        # For each token in the union, check each layer.
+        for token in skipped_tokens:
+            self.status.initialize_token(token)
+            if self.status.get_layer_location(token, next_l) == 0:
+                # Update layer status to external memory.
+                self.status.update_token_layer(token, next_l, 1)
+                self.cfg.C_HBM -= layer_size       # Update HBM occupancy.
+                hbm_MR += layer_size
+                ext_MW += layer_size 
         
         full = False
 
@@ -353,10 +364,9 @@ class AlphaMigration(BaseDataMigration):
                 adjusted = False
                 for token in self.status.token_layer_status.keys():
                     if self.status.get_layer_location(token, next_l) == 1:
-                        if self.status.store_data(layer_size):
-                            if token in skipped_tokens:
-                                continue
-                            
+                        if token in skipped_tokens:
+                            continue
+                        if self.status.store_data(layer_size):   
                             # Migrate in: update layer status from 1 (External) to 0 (HBM).
                             self.status.update_token_layer(token, next_l, 0)
                         
