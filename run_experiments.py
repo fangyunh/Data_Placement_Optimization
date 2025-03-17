@@ -4,89 +4,49 @@ import time
 from datetime import datetime
 
 experiments = [
+    # HBM enough
     {
-        'N': 1024*4,
+        'N': 1024*2,
         'N_pre': 512,
-        'para_num': 0.25,
-        'C_HBM_max': 1,
-        'filename': '03_05_4.txt',
+        'para_num': 0.1,
+        'C_HBM_max': 2,
+        'filename': '00_05_2.txt',
         'init_class': 'HBMInit',
-        # 'mig_classes': ['NoMigration', 'AlphaMigration'],
-        'mig_classes': ['LookAheadBatchMigration', ],
-        # 'plc_classes': ['PreferHBM', 'BatchRatio']
-        'plc_classes': ['LookAheadBatch', 'AlphaLayersDistribution']
+        'mig_classes': ['NoMigration', 'AlphaMigration', 'PastWindowMigration'],
+        'plc_classes': ['PreferHBM', 'AlphaLayersDistribution']
+    },
+    {
+        'N': 1024*2,
+        'N_pre': 512,
+        'para_num': 0.1,
+        'C_HBM_max': 2,
+        'filename': '04_05_2.txt',
+        'init_class': 'HBMInit',
+        'mig_classes': ['NoMigration', 'AlphaMigration', 'PastWindowMigration'],
+        'plc_classes': ['PreferHBM', 'AlphaLayersDistribution']
+    },
+    # HBM not enough
+    {
+        'N': 1024*8,
+        'N_pre': 512,
+        'para_num': 0.1,
+        'C_HBM_max': 2,
+        'filename': '00_05_8.txt',
+        'init_class': 'HBMInit',
+        'mig_classes': ['NoMigration', 'AlphaMigration', 'PastWindowMigration'],
+        'plc_classes': ['PreferHBM', 'AlphaLayersDistribution']
+    },
+    {
+        'N': 1024*8,
+        'N_pre': 512,
+        'para_num': 0.1,
+        'C_HBM_max': 2,
+        'filename': '04_05_8.txt',
+        'init_class': 'HBMInit',
+        'mig_classes': ['NoMigration', 'AlphaMigration', 'PastWindowMigration'],
+        'plc_classes': ['PreferHBM', 'AlphaLayersDistribution']
     }
-    # {
-    #     'N': 1024*10,
-    #     'N_pre': 1024*2,
-    #     'para_num': 0.5,
-    #     'C_HBM_max': 3,
-    #     'filename': '03_2_10.txt',
-    #     'init_class': 'TokenLevelBestRatioInit',
-    #     'mig_classes': ['NoMigration', 'AlphaMigration'],
-    #     'plc_classes': ['PreferHBM', 'BatchRatio']
-    # },
-    # {
-    #     'N': 1024*10,
-    #     'N_pre': 1024*2,
-    #     'para_num': 0.5,
-    #     'C_HBM_max': 3,
-    #     'filename': '06_2_10.txt',
-    #     'init_class': 'HBMInit',
-    #     'mig_classes': ['NoMigration', 'AlphaMigration'],
-    #     'plc_classes': ['PreferHBM', 'BatchRatio']
-    # },
-    # {
-    #     'N': 1024*10,
-    #     'N_pre': 1024*2,
-    #     'para_num': 0.5,
-    #     'C_HBM_max': 3,
-    #     'filename': '06_2_10.txt',
-    #     'init_class': 'TokenLevelBestRatioInit',
-    #     'mig_classes': ['NoMigration', 'AlphaMigration'],
-    #     'plc_classes': ['PreferHBM', 'BatchRatio']
-    # }
-    # 03_2_1
-    # {
-    #     'N': 1024*1,
-    #     'N_pre': 1024*2,
-    #     'para_num': 0.5,
-    #     'C_HBM_max': 3,
-    #     'filename': '03_2_1.txt',
-    #     'init_class': 'HBMInit',
-    #     'mig_classes': ['NoMigration', 'AlphaMigration'],
-    #     'plc_classes': ['PreferHBM', 'BatchRatio']
-    # },
-    # {
-    #     'N': 1024*1,
-    #     'N_pre': 1024*2,
-    #     'para_num': 0.5,
-    #     'C_HBM_max': 3,
-    #     'filename': '03_2_1.txt',
-    #     'init_class': 'TokenLevelBestRatioInit',
-    #     'mig_classes': ['NoMigration', 'AlphaMigration'],
-    #     'plc_classes': ['PreferHBM', 'BatchRatio']
-    # },
-    # {
-    #     'N': 1024*1,
-    #     'N_pre': 1024*2,
-    #     'para_num': 0.5,
-    #     'C_HBM_max': 3,
-    #     'filename': '06_2_1.txt',
-    #     'init_class': 'HBMInit',
-    #     'mig_classes': ['NoMigration', 'AlphaMigration'],
-    #     'plc_classes': ['PreferHBM', 'BatchRatio']
-    # },
-    # {
-    #     'N': 1024*1,
-    #     'N_pre': 1024*2,
-    #     'para_num': 0.5,
-    #     'C_HBM_max': 3,
-    #     'filename': '06_2_1.txt',
-    #     'init_class': 'TokenLevelBestRatioInit',
-    #     'mig_classes': ['NoMigration', 'AlphaMigration'],
-    #     'plc_classes': ['PreferHBM', 'BatchRatio']
-    # }
+    
 ]
 
 def run_experiment(config):

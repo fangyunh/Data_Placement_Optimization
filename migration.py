@@ -125,7 +125,7 @@ class SkippedTokensMigration(BaseDataMigration):
 class PastWindowMigration(BaseDataMigration):
     def __init__(self, config, status):
         super().__init__(config, status)
-        self.window_size = 50
+        self.window_size = 16
 
     def migration_strategy(self, n: int, l: int, s: int) -> tuple[float, float, float, float]:
         hbm_MR = 0.0 

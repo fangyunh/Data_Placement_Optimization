@@ -1,10 +1,10 @@
 import random
 
 # Configuration parameters
-N = 1024 * 4      # Number of tokens to generate in decode stage
+N = 1024 * 2      # Number of tokens to generate in decode stage
 N_pre = 512  # Starting token index for decode stage
 L = 32          # Total layers (matches ModelConfig.L)
-sparsity = 0.3  # Target sparsity ratio (adjust as needed)
+sparsity = 0.4  # Target sparsity ratio (adjust as needed)
 
 def generate_skipped_tokens(n, sparsity):
     """Generate skipped tokens for token n with age-biased sparsity."""

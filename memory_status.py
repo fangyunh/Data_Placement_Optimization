@@ -13,9 +13,9 @@ class ModelConfig():
     def __init__(self, N=1024*2, N_pre=1024*2, para_num=0.5, 
                 C_HBM_max=3):
         self.L: int = 32          # Number of layers
-        self.d: int = 4096        # Hidden dimension
+        self.d: int = 16384        # Hidden dimension 3.g. 8192
         self.h: int = 32          # Number of attention heads
-        self.d_ff: int = 16384    # Feed-forward dimension
+        self.d_ff: int = 8192    # Feed-forward dimension e.e. 16384
         self.dtype_size: int = 2  # Bytes per parameter (e.g., 2 for FP16)
         self.para_num: int = para_num * 1000000000 # how many parameters in the model 2B 4GB
         

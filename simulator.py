@@ -148,7 +148,7 @@ def run_simulation(init_class: MemStatus, config_params: dict,
     config_temp = copy.deepcopy(config)
     trace = load_trace(fn)
     initial_state_clean = init_class(config_temp, trace, 
-                                    weight_on_HBM=1.0, is_inclusive=False)
+                                    weight_on_HBM=0.845, is_inclusive=False)
     
     # Rest of the original simulation logic...
     initial_state_temp = copy.deepcopy(initial_state_clean)
@@ -201,10 +201,14 @@ if __name__ == "__main__":
         'NoMigration': NoMigration,
         'AlphaMigration': AlphaMigration,
         'LookAheadBatchMigration': LookAheadBatchMigration,
+        'LookAheadMigration': LookAheadMigration,
+        'PriorMigration': PriorMigration,
+        'PastWindowMigration': PastWindowMigration,
         # Placement classes
         'PreferHBM': PreferHBM,
         'BatchRatio': BatchRatio,
         'LookAheadBatch': LookAheadBatch,
+        'LayerImportance': LayerImportance,
         'AlphaLayersDistribution': AlphaLayersDistribution,
     }
 
