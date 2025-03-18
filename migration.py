@@ -308,81 +308,113 @@ class AlphaMigration(BaseDataMigration):
         ext_MR = 0.0
         ext_MW = 0.0
 
-        deviation = 0.005
-        next_n = n
-        next_l = l + 1
-        next_s = 0
-        if next_l >= self.cfg.L:
-            next_l = 0
-            next_n = n + 1
+        deviation = 0.02
+        next_n = n + 1
 
-        next_key = (next_n, next_l, next_s)
+        next_key = (next_n, l, s)
         if next_key not in self.status.trace:
             return [0.0, 0.0, 0.0, 0.0] 
         
         if s != 0:
             return [0.0, 0.0, 0.0, 0.0]
 
-        step_info = self.status.trace.get((next_n, next_l, next_s), {"skip_token_kv": [], "skip_layer": False})
+        step_info = self.status.trace.get((next_n, l, s), {"skip_token_kv": [], "skip_layer": False})
         skipped_tokens = step_info["skip_token_kv"]
-
-        # For each token in the union, check each layer.
-        for token in skipped_tokens:
-            self.status.initialize_token(token)
-            if self.status.get_layer_location(token, next_l) == 0:
-                # Update layer status to external memory.
-                self.status.update_token_layer(token, next_l, 1)
-                self.cfg.C_HBM -= layer_size       # Update HBM occupancy.
-                hbm_MR += layer_size
-                ext_MW += layer_size 
+        step_info_cur_l = self.status.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
+        skipped_tokens_cu_l = step_info_cur_l["skip_token_kv"]
         
-        full = False
-
-        current_alpha = self.status.max_and_best_alphas(next_n, next_l, next_s)
-        while not full and abs(current_alpha[0] - self.cfg.best_alpha) > deviation:
-            if current_alpha[0] > self.cfg.best_alpha:
-                # Too high: we want to reduce HBM contribution.
-                # Find one token (from those tracked) that currently has its next_l layer in HBM.
-                adjusted = False
-                for token in self.status.token_layer_status.keys():
-                    if self.status.get_layer_location(token, next_l) == 0:
-                        # Update layer status to external memory.
-                        self.status.update_token_layer(token, next_l, 1)
-                        # Decrease HBM occupancy.
-                        self.cfg.C_HBM -= layer_size
-                        hbm_MR += layer_size
-                        ext_MW += layer_size
-                        adjusted = True
+        count = 0
+        limit = 10
+        for token in skipped_tokens:
+            if token in skipped_tokens_cu_l:
+                if self.status.get_layer_location(token, l) == 0:
+                    # Update layer status to external memory.
+                    self.status.update_token_layer(token, l, 1)
+                    # Decrease HBM occupancy.
+                    self.cfg.C_HBM -= layer_size
+                    ext_MW += layer_size
+                    hbm_MR += layer_size
+                    count += 1
+                    if count >= limit:
                         break
 
-                if not adjusted:
-                    # No candidate found, mark full.
-                    full = True
+        # Initial setup
+        D_R, _ = self.status.calculate_data_sizes(next_n, l, s)
+        current_alpha = self.status.max_and_best_alphas(next_n, l, s)
+        effective_KV_cache = (current_alpha[0] * D_R) - (self.status.get_layer_md_weight_size() * self.status.model_weight_ratio)
+
+        adjustment = False
+        for token in self.status.token_layer_status.keys():
+            if adjustment:
+                # Incremental update instead of full recalculation
+                current_alpha[0] = (self.status.get_layer_md_weight_size() * self.status.model_weight_ratio + effective_KV_cache) / D_R
+            if abs(current_alpha[0] - self.cfg.best_alpha) < deviation:
+                break
+            adjustment = False
+            if token in skipped_tokens_cu_l:
+                continue
+
+            if current_alpha[0] >= self.cfg.best_alpha:
+                if self.status.get_layer_location(token, l) == 0:
+                    self.status.update_token_layer(token, l, 1)
+                    self.cfg.C_HBM -= layer_size
+                    ext_MW += layer_size
+                    effective_KV_cache -= layer_size  # Update KV cache size
+                    adjustment = True
             else:
-                # Too low: we want to increase HBM contribution.
-                # Find one token that has its next_l layer in External memory.
-                adjusted = False
-                for token in self.status.token_layer_status.keys():
-                    if self.status.get_layer_location(token, next_l) == 1:
-                        if token in skipped_tokens:
-                            continue
-                        if self.status.store_data(layer_size):   
-                            # Migrate in: update layer status from 1 (External) to 0 (HBM).
-                            self.status.update_token_layer(token, next_l, 0)
-                        
-                            hbm_MW += layer_size
-                            ext_MR += layer_size
-                            adjusted = True
-                            break
-                        else:
-                            full = True
-                            break
+                if self.status.get_layer_location(token, l) == 1:
+                    if token in skipped_tokens:
+                        continue
+                    if self.status.store_data(layer_size):
+                        self.status.update_token_layer(token, l, 0)
+                        hbm_MW += layer_size
+                        effective_KV_cache += layer_size  # Update KV cache size
+                        adjustment = True
+
+        # while not full and abs(current_alpha[0] - self.cfg.best_alpha) > deviation:
+        #     if current_alpha[0] > self.cfg.best_alpha:
+        #         # Too high: we want to reduce HBM contribution.
+        #         # Find one token (from those tracked) that currently has its next_l layer in HBM.
+        #         adjusted = False
+        #         for token in self.status.token_layer_status.keys():
+        #             if token in skipped_tokens_cu_l:
+        #                 continue
+
+        #             if self.status.get_layer_location(token, l) == 0:
+        #                 # Update layer status to external memory.
+        #                 self.status.update_token_layer(token, l, 1)
+        #                 # Decrease HBM occupancy.
+        #                 self.cfg.C_HBM -= layer_size
+        #                 ext_MW += layer_size
+        #                 adjusted = True
+        #                 break
+
+        #         if not adjusted:
+        #             # No candidate found, mark full.
+        #             full = True
+        #     else:
+        #         # Too low: we want to increase HBM contribution.
+        #         # Find one token that has its next_l layer in External memory.
+        #         adjusted = False
+        #         for token in self.status.token_layer_status.keys():
+        #             if self.status.get_layer_location(token, l) == 1:
+        #                 if (token in skipped_tokens) or (token in skipped_tokens_cu_l):
+        #                     continue
+        #                 if self.status.store_data(layer_size):   
+        #                     # Migrate in: update layer status from 1 (External) to 0 (HBM).
+        #                     self.status.update_token_layer(token, l, 0)
+        #                     hbm_MW += layer_size
+        #                     adjusted = True
+        #                     break
+        #                 else:
+        #                     full = True
+        #                     break
                         
                     
-                if not adjusted:
-                    full = True
-            # Recompute the alpha after adjustment.
-            current_alpha = self.status.max_and_best_alphas(next_n, next_l, next_s)
+        #         if not adjusted:
+        #             full = True
+        #     # Recompute the alpha after adjustment.
+        #     current_alpha = self.status.max_and_best_alphas(next_n, l, s)
             
         if self.status.inclusive:
             return [0.0, hbm_MW, ext_MR, 0.0]   
