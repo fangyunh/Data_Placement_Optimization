@@ -43,6 +43,7 @@ class MemStatus(ABC):
         self.threshold = 0.99
         # self.model_weight_ratio = 1.0
         self.inclusive = is_inclusive
+        self.hbm_token_counts = [0] * config.L
         self.initialize_memory()
     
     def initialize_memory(self):
@@ -75,7 +76,15 @@ class MemStatus(ABC):
         Update the location for a given token and layer.
         location should be 0 (HBM), 1 (External), or 2 (Skipped).
         """
-        self.initialize_token(token_id)
+        prev_loc = self.get_layer_location(token_id, layer)
+        if prev_loc == location:
+            raise ValueError("Cannot update token to its original memory!")
+        # Decrement previous HBM count if needed
+        if prev_loc == 0:
+            self.hbm_token_counts[layer] -= 1
+        # Increment new HBM count if needed
+        if location == 0:
+            self.hbm_token_counts[layer] += 1
         self.token_layer_status[token_id][layer] = location
     
     def get_effective_token_size(self, token_id) -> int:
@@ -114,22 +123,13 @@ class MemStatus(ABC):
     def calculate_data_sizes(self, n: int, l: int, s: int):
         """Calculate read/write data sizes for current step."""
         step_info = self.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
-        # If this layer is skipped in the trace, no data is processed.
-        if step_info["skip_layer"]:
-            return 0, 0
-        skip_tokens = set(step_info["skip_token_kv"])
 
         if s == 0:  # MHA
             D_R = self.get_layer_md_weight_size() + n * self.get_single_KV_cache_size()
             D_W = 2 * self.cfg.d * self.cfg.dtype_size
-            count = 0
-            for token_id, layer_status in self.token_layer_status.items():
-                if token_id in skip_tokens:
-                    continue
-                if layer_status[l] == 2:
-                    count += 1
+
             # Reduce D_R by size of skipped KV caches           
-            skipped_kv_size = (len(step_info["skip_token_kv"]) + count) * 2 * self.cfg.d * self.cfg.dtype_size
+            skipped_kv_size = (len(step_info["skip_token_kv"])) * self.get_single_KV_cache_size()
             D_R -= skipped_kv_size
             
         else:  # MLP
@@ -137,16 +137,13 @@ class MemStatus(ABC):
             D_W = 0
         return D_R, D_W
 
-    def max_and_best_alphas(self, n: int, l: int, s: int):
+    def max_alpha(self, n: int, l: int, s: int):
         D_R, _ = self.calculate_data_sizes(n, l, s)
         if D_R <= 0:
-            return [0.0, 0.0]
+            return 0.0
         
-        if s == 1:
-            if self.inclusive:
-                return [self.model_weight_ratio, min(self.cfg.best_alpha, self.model_weight_ratio)]
-            else:
-                return [self.model_weight_ratio, self.model_weight_ratio]
+        if s == 1:    
+            return self.model_weight_ratio
         
         # Model weight part: assume that the model weight component in D_R is 4*d^2*dtype_size.
         model_weight_component = self.get_layer_md_weight_size()
@@ -156,33 +153,16 @@ class MemStatus(ABC):
         step_info = self.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
         skip_tokens = set(step_info["skip_token_kv"])
 
-        # Count over all tokens that have been processed so far (or that are tracked)
-        count_hbm = 0
-        count_tot_tokens = 0
-        for token_id, layer_status in self.token_layer_status.items():
-            # Only consider tokens that are NOT skipped for the current step.
-            if token_id in skip_tokens:
-                continue
-            if layer_status[l] == 0:
-                count_hbm += 1
-            if layer_status[l] == 0 or layer_status[l] == 1:
-                count_tot_tokens += 1
+        skipped_in_hbm = sum(1 for token in skip_tokens if self.get_layer_location(token, l) == 0)
+        count_hbm = self.hbm_token_counts[l] - skipped_in_hbm
 
         # count_hbm should also include prefill tokens
         effective_KV_cache = count_hbm * self.get_single_KV_cache_size()
         
         max_alpha = (effective_model_weight + effective_KV_cache) / D_R
-        
-        # Calculate the best alpha for inclusive HBM
-        best_alpha = 0.0
-        best_HBM_tokens = math.floor(self.cfg.best_alpha * count_tot_tokens)
-        best_effective_KV_cahe = min(best_HBM_tokens, count_hbm) * self.get_single_KV_cache_size()
-        if self.inclusive:
-            best_alpha = (model_weight_component * min(self.cfg.best_alpha, self.model_weight_ratio) 
-                        + best_effective_KV_cahe) / D_R
             
         # Ensure alpha is within [0, 1]
-        return [max(0.0, min(max_alpha, 1.0)), max(0.0, min(best_alpha, 1.0))]
+        return max(0.0, min(max_alpha, 1.0))
     
     
     @abstractmethod

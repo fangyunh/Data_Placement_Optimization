@@ -4,7 +4,7 @@ import random
 N = 1024 * 16      # Number of tokens to generate in decode stage
 N_pre = 1024      # Starting token index for decode stage
 L = 32            # Total layers (matches ModelConfig.L)
-sparsity = 0.1    # Target sparsity ratio
+sparsity = 0.3    # Target sparsity ratio
 diff_ratio = 0.03  # Maximum difference ratio between consecutive skip sets
 
 def generate_initial_skipped_tokens(n, sparsity):

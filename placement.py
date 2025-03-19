@@ -12,11 +12,11 @@ class BaseStrategy(ABC):
 
     
     def alpha_strategy(self, n: int, l: int, s: int) -> float:
-        alphas = self.status.max_and_best_alphas(n, l, s)
+        alpha = self.status.max_alpha(n, l, s)
         if self.status.inclusive:
-            return alphas[1]
+            return min(self.cfg.best_alpha, alpha)
         
-        return alphas[0]
+        return alpha
 
     @abstractmethod
     def beta_strategy(self, n: int, l: int, s: int) -> float:
@@ -176,14 +176,11 @@ class AlphaLayersDistribution(BaseStrategy):
     def beta_strategy(self, n, l, s):
         if s == 1:
             return 0.0
-        count = 0
-        for token_id, layer_status in self.status.token_layer_status.items():
-            if layer_status[l] == 0:
-                count += 1
+        count = self.status.hbm_token_counts[l]
 
         _, D_W = self.status.calculate_data_sizes(n, l, s)
             
-        if ((count / n) < self.cfg.best_alpha):
+        if ((count / n) <= self.cfg.best_alpha):
             if (self.status.store_data(D_W)):
                 self.status.update_token_layer(n, l, 0)
                 return 1.0
