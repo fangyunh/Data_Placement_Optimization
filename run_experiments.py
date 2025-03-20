@@ -153,7 +153,8 @@ experiments = [
         'N_pre': 1024,
         'para_num': 0.5,
         'C_HBM_max': 4,
-        'filename': '01_1_16.txt',
+        'inclusive': True,
+        'filename': '03_1_16.txt',
         'init_class': 'HBMInit',
         'mig_classes': ['NoMigration'],
         'plc_classes': ['PreferHBM']
@@ -163,7 +164,7 @@ experiments = [
         'N_pre': 1024,
         'para_num': 0.5,
         'C_HBM_max': 4,
-        'filename': '01_1_16.txt',
+        'filename': '03_1_16.txt',
         'init_class': 'TokenLevelBestRatioInit',
         'mig_classes': ['AlphaMigration'],
         'plc_classes': ['AlphaLayersDistribution']

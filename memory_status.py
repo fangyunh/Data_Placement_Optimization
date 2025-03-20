@@ -64,6 +64,12 @@ class MemStatus(ABC):
             # Default: all layers set to 3 (undecided)
             self.token_layer_status[token_id] = [3] * self.cfg.L
     
+    def get_skip_token_kv(self, n, l, s):
+        """Return skip_token_kv for step (n, l, s)."""
+        if s == 0:
+            return self.trace.get(n, [])
+        return []
+    
     def get_layer_location(self, token_id, layer: int) -> int:
         """Return the location of a token's KV cache at a specific layer.
            0: HBM, 1: External, 2: Skipped.
@@ -122,14 +128,16 @@ class MemStatus(ABC):
     
     def calculate_data_sizes(self, n: int, l: int, s: int):
         """Calculate read/write data sizes for current step."""
-        step_info = self.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
+        # step_info = self.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
+        step_info = self.get_skip_token_kv(n, l, s)
 
         if s == 0:  # MHA
             D_R = self.get_layer_md_weight_size() + n * self.get_single_KV_cache_size()
             D_W = 2 * self.cfg.d * self.cfg.dtype_size
 
             # Reduce D_R by size of skipped KV caches           
-            skipped_kv_size = (len(step_info["skip_token_kv"])) * self.get_single_KV_cache_size()
+            # skipped_kv_size = (len(step_info["skip_token_kv"])) * self.get_single_KV_cache_size()
+            skipped_kv_size = len(step_info) * self.get_single_KV_cache_size()
             D_R -= skipped_kv_size
             
         else:  # MLP
@@ -150,8 +158,9 @@ class MemStatus(ABC):
         effective_model_weight = self.model_weight_ratio * model_weight_component
 
         # Retrieve current step's trace to get skip_token_kv list.
-        step_info = self.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
-        skip_tokens = set(step_info["skip_token_kv"])
+        # step_info = self.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
+        # skip_tokens = set(step_info["skip_token_kv"])
+        skip_tokens = set(self.get_skip_token_kv(n, l, s))
 
         skipped_in_hbm = sum(1 for token in skip_tokens if self.get_layer_location(token, l) == 0)
         count_hbm = self.hbm_token_counts[l] - skipped_in_hbm

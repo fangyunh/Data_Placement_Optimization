@@ -12,25 +12,41 @@ import re
 
 BYTES_TO_GB = 1024**3
 
-def load_trace(filename="trace.txt"):
+# def load_trace(filename="trace.txt"):
+#     trace = {}
+#     pattern = re.compile(r"^([^,]+),([^,]+),([^,]+),(\[.*?\]),(.+)$")
+
+#     with open(filename, "r") as f:
+#         for line in f:
+#             line = line.strip()
+#             m = pattern.match(line)
+#             if m:
+#                 n, l, s, skip_token_kv_str, skip_layer_str = m.groups()
+#                 n, l, s = int(n), int(l), int(s)
+#                 skip_token_kv = eval(skip_token_kv_str)  # Note: using eval can be dangerous if the file is untrusted
+#                 skip_layer = skip_layer_str.strip().lower() == "true"
+#                 trace[(n, l, s)] = {"skip_token_kv": skip_token_kv, "skip_layer": skip_layer}
+#             else:
+#                 raise ValueError("Line doesn't match expected format: " + line)
+#     return trace
+
+def load_skip_lists(filename="trace.txt"):
     trace = {}
     pattern = re.compile(r"^([^,]+),([^,]+),([^,]+),(\[.*?\]),(.+)$")
 
     with open(filename, "r") as f:
-        next(f)  # Skip header if there is one
         for line in f:
             line = line.strip()
             m = pattern.match(line)
             if m:
                 n, l, s, skip_token_kv_str, skip_layer_str = m.groups()
                 n, l, s = int(n), int(l), int(s)
-                skip_token_kv = eval(skip_token_kv_str)  # Note: using eval can be dangerous if the file is untrusted
-                skip_layer = skip_layer_str.strip().lower() == "true"
-                trace[(n, l, s)] = {"skip_token_kv": skip_token_kv, "skip_layer": skip_layer}
+                if l == 0 and s == 0:
+                    skip_token_kv = eval(skip_token_kv_str)
+                    trace[n] = skip_token_kv
             else:
                 raise ValueError("Line doesn't match expected format: " + line)
     return trace
-
 
 class MemorySimulator(ABC):
     def __init__(self, config: ModelConfig, status: MemStatus,
@@ -131,6 +147,7 @@ def run_simulation(init_class: MemStatus, config_params: dict,
                   mig_classes: list, plc_classes: list):
     """Run simulation with specified initialization class and config parameters"""
     fn = config_params.get('filename', "trace.txt")
+    inclusive = config_params.get('inclusive', False)
     
     # Create config with custom parameters
     config = ModelConfig(
@@ -146,8 +163,8 @@ def run_simulation(init_class: MemStatus, config_params: dict,
 
     # Run simulation for this initialization class
     config_temp = copy.deepcopy(config)
-    trace = load_trace(fn)
-    initial_state_clean = init_class(config_temp, trace, is_inclusive=False)
+    trace = load_skip_lists(fn)
+    initial_state_clean = init_class(config_temp, trace, inclusive)
     
     # Rest of the original simulation logic...
     initial_state_temp = copy.deepcopy(initial_state_clean)
@@ -219,6 +236,7 @@ if __name__ == "__main__":
     parser.add_argument('--N_pre', type=int, default=1024*2)
     parser.add_argument('--para_num', type=float, default=0.5)
     parser.add_argument('--C_HBM_max', type=int, default=3)
+    parser.add_argument('--inclusive', type=bool, default=False)
     parser.add_argument('--filename', type=str, default="trace.txt")
     parser.add_argument('--init_class', type=str, required=True, 
                        help='Initialization class name')
@@ -243,7 +261,8 @@ if __name__ == "__main__":
         'N_pre': args.N_pre,
         'para_num': args.para_num,
         'C_HBM_max': args.C_HBM_max,
-        'filename': args.filename
+        'filename': args.filename,
+        'inclusive': args.inclusive
     }
 
     

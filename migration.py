@@ -59,8 +59,9 @@ class PriorMigration(BaseDataMigration):
         # Only perform migration if the HBM utilization rate exceeds the threshold.
         if self.status.exceed_threshold():
             tokens_in_hbm = []
-            step_info = self.status.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
-            skipped_tokens = sorted(step_info["skip_token_kv"])
+            # step_info = self.status.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
+            # skipped_tokens = sorted(step_info["skip_token_kv"])
+            skipped_tokens = sorted(self.status.get_skip_token_kv(n, l, s))
 
             # We assume that if a token has any layer with value 0, it is eligible.
             for token_id, layer_status in self.status.token_layer_status.items():
@@ -117,8 +118,9 @@ class SkippedTokensMigration(BaseDataMigration):
         if self.exceed_threshold():
             # print(f"Exceed threshold!")
             # Retrieve the trace for the current step.
-            step_info = self.status.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
-            skipped_tokens = sorted(step_info["skip_token_kv"])
+            # step_info = self.status.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
+            # skipped_tokens = sorted(step_info["skip_token_kv"])
+            skipped_tokens = sorted(self.status.get_skip_token_kv(n, l, s))
             
             # Iterate over each token in the skipped list.
             for token_id in skipped_tokens:
@@ -151,8 +153,9 @@ class PastWindowMigration(BaseDataMigration):
         ext_MR = 0.0
         ext_MW = 0.0
 
-        step_info = self.status.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
-        skipped_tokens = sorted(step_info["skip_token_kv"])
+        # step_info = self.status.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
+        # skipped_tokens = sorted(step_info["skip_token_kv"])
+        skipped_tokens = sorted(self.status.get_skip_token_kv(n, l, s))
 
         layer_size = self.status.get_single_KV_cache_size()  # per-layer size = 2 * d * dtype_size
 
@@ -195,8 +198,9 @@ class LookAheadMigration(BaseDataMigration):
         ext_MR = 0.0
         ext_MW = 0.0
         layer_size = self.status.get_single_KV_cache_size()
-        step_info = self.status.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
-        skipped_tokens = sorted(step_info["skip_token_kv"])
+        # step_info = self.status.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
+        # skipped_tokens = sorted(step_info["skip_token_kv"])
+        skipped_tokens = sorted(self.status.get_skip_token_kv(n, l, s))
         
         next_key = (n + 1, l, s)
         if next_key not in self.status.trace:
@@ -268,8 +272,11 @@ class LookAheadBatchMigration(BaseDataMigration):
         batch_skip_lists = []
         for j in range(1, self.batch_size + 1):
             key = (n + j, l, s)
-            info = self.status.trace.get(key, {"skip_token_kv": []})
-            batch_skip_lists.append(set(info["skip_token_kv"]))
+            # info = self.status.trace.get(key, {"skip_token_kv": []})
+            # batch_skip_lists.append(set(info["skip_token_kv"]))
+            info = sorted(self.status.get_skip_token_kv(n, l, s))
+            batch_skip_lists.append(set(info))
+            
         
         if not batch_skip_lists:
             return [0.0, 0.0, 0.0, 0.0] 
@@ -317,6 +324,15 @@ class LookAheadBatchMigration(BaseDataMigration):
 class AlphaMigration(BaseDataMigration):
     def __init__(self, config, status):
         super().__init__(config, status)
+    
+    def move_out_unimportant_tokens(self, skip_tokens, layer) -> bool:
+        for token in skip_tokens:
+            if self.status.get_layer_location(token, layer) == 0:
+                self.status.update_token_layer(token, layer, 1)
+                self.cfg.C_HBM -= self.status.get_single_KV_cache_size()
+                return True
+        
+        return False
 
     def migration_strategy(self, n: int, l: int, s: int) -> tuple[float, float, float, float]:
         layer_size = self.status.get_single_KV_cache_size()
@@ -338,10 +354,14 @@ class AlphaMigration(BaseDataMigration):
         # Get current HBM count and skipped tokens
         current_tokens_on_hbm = self.status.hbm_token_counts[l]
 
-        step_info = self.status.trace.get((next_n, l, s), {"skip_token_kv": [], "skip_layer": False})
-        skipped_tokens = sorted(step_info["skip_token_kv"])
-        step_info_cur_l = self.status.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
-        skipped_tokens_cu_l = sorted(step_info_cur_l["skip_token_kv"])
+        # step_info = self.status.trace.get((next_n, l, s), {"skip_token_kv": [], "skip_layer": False})
+        # skipped_tokens = sorted(step_info["skip_token_kv"])
+        # step_info_cur_l = self.status.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
+        # skipped_tokens_cu_l = sorted(step_info_cur_l["skip_token_kv"])
+
+        skipped_tokens = sorted(self.status.get_skip_token_kv(next_n, l, s))
+        skipped_tokens_cu_l = sorted(self.status.get_skip_token_kv(n, l, s))
+
         # Calculate effective HBM tokens for alpha
         skipped_in_hbm = sum(1 for token in skipped_tokens if self.status.get_layer_location(token, l) == 0)
         effective_tokens_on_hbm = current_tokens_on_hbm - skipped_in_hbm
@@ -354,6 +374,8 @@ class AlphaMigration(BaseDataMigration):
         delta = target_tokens - effective_tokens_on_hbm
 
         if delta < 0:
+            if self.status.inclusive:
+                return [0.0, 0.0, 0.0, 0.0]
             migrate_out = min(-delta, current_tokens_on_hbm)
             # Simple heuristic: migrate oldest tokens (implementation-specific)
             migrated = 0
@@ -372,63 +394,27 @@ class AlphaMigration(BaseDataMigration):
             for token in sorted(self.status.token_layer_status.keys(), reverse=True):  # Newest first
                 if migrated >= delta:
                     break
+
                 if (self.status.get_layer_location(token, l) == 1 and 
-                    binary_search(skipped_tokens, token) == False and 
-                    self.status.store_data(layer_size)):
-                    self.status.update_token_layer(token, l, 0)
-                    hbm_MW += layer_size
-                    migrated += 1
+                    binary_search(skipped_tokens, token) == False):
 
-        # count = 0
-        # limit = 10
-        # for token in skipped_tokens:
-        #     if token in skipped_tokens_cu_l:
-        #         if self.status.get_layer_location(token, l) == 0:
-        #             # Update layer status to external memory.
-        #             self.status.update_token_layer(token, l, 1)
-        #             # Decrease HBM occupancy.
-        #             self.cfg.C_HBM -= layer_size
-        #             ext_MW += layer_size
-        #             hbm_MR += layer_size
-        #             count += 1
-        #             if count >= limit:
-        #                 break
+                    if (self.status.store_data(layer_size)):
+                        self.status.update_token_layer(token, l, 0)
+                        hbm_MW += layer_size
+                        migrated += 1
+                    else:
+                        if self.move_out_unimportant_tokens(skipped_tokens, l):
+                            if (self.status.store_data(layer_size)):
+                                self.status.update_token_layer(token, l, 0)
+                                hbm_MW += layer_size
+                                migrated += 1
+                        else:
+                            break
 
-        # # Initial setup
-        # D_R, _ = self.status.calculate_data_sizes(next_n, l, s)
-        # current_alpha = self.status.max_alpha(next_n, l, s)
-        # effective_KV_cache = (current_alpha[0] * D_R) - (self.status.get_layer_md_weight_size() * self.status.model_weight_ratio)
-
-        # adjustment = False
-        # for token in self.status.token_layer_status.keys():
-        #     if adjustment:
-        #         # Incremental update instead of full recalculation
-        #         current_alpha[0] = (self.status.get_layer_md_weight_size() * self.status.model_weight_ratio + effective_KV_cache) / D_R
-        #     if abs(current_alpha[0] - self.cfg.best_alpha) < deviation:
-        #         break
-        #     adjustment = False
-        #     if token in skipped_tokens_cu_l:
-        #         continue
-
-        #     if current_alpha[0] >= self.cfg.best_alpha:
-        #         if self.status.get_layer_location(token, l) == 0:
-        #             self.status.update_token_layer(token, l, 1)
-        #             self.cfg.C_HBM -= layer_size
-        #             ext_MW += layer_size
-        #             effective_KV_cache -= layer_size  # Update KV cache size
-        #             adjustment = True
-        #     else:
-        #         if self.status.get_layer_location(token, l) == 1:
-        #             if token in skipped_tokens:
-        #                 continue
-        #             if self.status.store_data(layer_size):
-        #                 self.status.update_token_layer(token, l, 0)
-        #                 hbm_MW += layer_size
-        #                 effective_KV_cache += layer_size  # Update KV cache size
-        #                 adjustment = True
 
         if self.status.inclusive:
             return [0.0, hbm_MW, ext_MR, 0.0]   
         
         return [hbm_MR, hbm_MW, ext_MR, ext_MW]
+    
         
