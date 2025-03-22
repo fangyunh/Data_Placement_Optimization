@@ -1,6 +1,5 @@
-import numpy as np
+
 import math
-import matplotlib.pyplot as plt
 import random
 from abc import ABC, abstractmethod
 from memory_status import ModelConfig, MemStatus, HBMInit, TokenLevelBestRatioInit
@@ -116,10 +115,10 @@ class MemorySimulator(ABC):
         for n in range(self.cfg.N_pre, self.cfg.N_pre + self.cfg.N):
             for l in range(self.cfg.L):
                 for s in [0, 1]:  # MHA and MLP
-                    step_info = self.status.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
+                    # step_info = self.status.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
                     # If this layer is skipped in the trace, no data is processed.
-                    if step_info["skip_layer"]:
-                        continue
+                    # if step_info["skip_layer"]:
+                    #     continue
                     # Get strategies
                     alpha = self.plc.alpha_strategy(n, l, s)
                     beta = self.plc.beta_strategy(n, l, s)
@@ -191,15 +190,18 @@ def run_simulation(init_class: MemStatus, config_params: dict,
             simulator = MemorySimulator(test_initial_state.cfg, test_initial_state, 
                                       placement_instance, mig_instance, best=False)
             total_time = simulator.simulate()
-            avg_alpha = sum(step['alpha'] for step in simulator.step_details) / len(simulator.step_details)
+            # avg_alpha = sum(step['alpha'] for step in simulator.step_details) / len(simulator.step_details)
             
             print(f"Combination: {p_cls.__name__} + {m_cls.__name__}")
             print(f"Total time: {total_time:.4f} ns, {total_time/1e9:.4f} seconds")
-            print(f"Avg alpha: {avg_alpha:.6f}")
-            print(f"Alphas:")
-            for step in simulator.step_details:
-                print(f"{step['alpha']:.4f}")
-            print("-" * 50)
+            #print(f"Avg alpha: {avg_alpha:.6f}")
+            print(f"Alpha:")
+            last_n = config.N_pre + config.N - 1
+            last_alpha = next(step['alpha'] for step in simulator.step_details
+                              if step['n'] == last_n and step['l'] == 31 and step['s'] == 0)
+            print(f"n={last_n}, alpha = {last_alpha:.4f}")
+
+            test_initial_state.print_token_layer_status()
     
     return
 
@@ -232,12 +234,12 @@ if __name__ == "__main__":
     }
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--N', type=int, default=1024*10)
-    parser.add_argument('--N_pre', type=int, default=1024*2)
+    parser.add_argument('--N', type=int, default=1024*16)
+    parser.add_argument('--N_pre', type=int, default=1024)
     parser.add_argument('--para_num', type=float, default=0.5)
-    parser.add_argument('--C_HBM_max', type=int, default=3)
+    parser.add_argument('--C_HBM_max', type=int, default=4)
     parser.add_argument('--inclusive', type=bool, default=False)
-    parser.add_argument('--filename', type=str, default="trace.txt")
+    parser.add_argument('--filename', type=str, default="04_1_16.txt")
     parser.add_argument('--init_class', type=str, required=True, 
                        help='Initialization class name')
     parser.add_argument('--mig_classes', type=str, nargs='+', required=True,
@@ -280,62 +282,3 @@ if __name__ == "__main__":
         sys.stdout = sys.__stdout__
 
 
-    # # Initialize configuration
-    # filename = "trace.txt"
-    # config = ModelConfig()
-
-    # # add bset time calculation
-    
-    # # List of placement strategies from placement.py.
-    # # placement_classes = [PreferHBM, SplitToken, BatchRatio, LookAheadBatch, LayerImportance]
-    # placement_classes = [PreferHBM, BatchRatio]
-    # # List of migration strategies from migration.py.
-    # # migration_classes = [NoMigration, PriorMigration, SkippedTokensMigration, PastWindowMigration, LookAheadMigration, LookAheadBatchMigration, AlphaMigration]
-    # migration_classes = [NoMigration, AlphaMigration]
-    # initialization_classes = [HBMInit, TokenLevelBestRatioInit]
-    # # HBMInit, 
-    # # Iterate over each combination of placement and migration strategy.
-    # for init in initialization_classes:
-    #     config_temp = copy.deepcopy(config)
-    #     initial_state_clean = init(config_temp, filename, config_temp.best_alpha, is_inclusive=False)    
-    #     initial_state_temp = copy.deepcopy(initial_state_clean)
-    #     # initial_state = init(config, filename, config.best_alpha, is_inclusive=False)
-    #     # coarsed upper bound
-    #     best_mig = NoMigration(initial_state_temp.cfg, initial_state_temp)
-    #     best_plc = PreferHBM(initial_state_temp.cfg, initial_state_temp)
-    #     best_simulator = MemorySimulator(initial_state_temp.cfg, initial_state_temp, best_plc, best_mig, best=True)
-    #     upper_bound_time = best_simulator.simulate()
-        
-    #     print(f"Best Combination:")
-    #     print(f"Total simulation time: {upper_bound_time:.4f} ns, {upper_bound_time/1e9:.4f} seconds")
-    #     print(f"Average time per token: {upper_bound_time/initial_state_temp.cfg.N:.6f} ns")
-    #     print("-" * 50)
-
-    #     for p_cls in placement_classes:
-    #         for m_cls in migration_classes:
-    #             # Clone the initial_state instead of re-initializing
-    #             test_initial_state = copy.deepcopy(initial_state_clean)
-    #             # test_initial_state = init(config, filename, config.best_alpha, is_inclusive=False)
-    #             # Instantiate migration instance (pass config and temporary strategy placeholder).
-    #             mig_instance = m_cls(test_initial_state.cfg, test_initial_state)
-    #             # Instantiate placement instance, passing the migration instance.
-    #             placement_instance = p_cls(test_initial_state.cfg, test_initial_state)
-                
-    #             # Create the simulator with this combined strategy.
-    #             simulator = MemorySimulator(test_initial_state.cfg, test_initial_state, placement_instance, mig_instance, best=False)
-    #             total_time = simulator.simulate()
-    #             avg_alpha = sum(step['alpha'] for step in simulator.step_details) / len(simulator.step_details)
-                
-    #             print(f"Combination: Data Placement = {p_cls.__name__}, Data Migration = {m_cls.__name__}")
-    #             print(f"Total simulation time: {total_time:.4f} ns, {total_time/1e9:.4f} seconds")
-    #             print(f"Average time per token: {total_time/test_initial_state.cfg.N:.6f} ns")
-    #             print(f"Avg alpha rate: {avg_alpha:.6f}")
-    #             print("-" * 50)
-    
-
-    # times = [step['alpha'] for step in simulator.step_details]
-    # plt.plot(times)
-    # plt.xlabel('Step')
-    # plt.ylabel('Time (ns)')
-    # plt.title('Step Time Distribution')
-    # plt.show()

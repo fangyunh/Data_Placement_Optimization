@@ -1,4 +1,4 @@
-import numpy as np
+
 import math
 from abc import ABC, abstractmethod
 from memory_status import ModelConfig, MemStatus
@@ -32,10 +32,11 @@ class PreferHBM(BaseStrategy):
         if s == 1:
             return 0.0
         
-        step_info = self.status.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
-        if step_info['skip_layer']:
-            self.status.update_token_layer(n, l, 2)
-            return 0.0
+        # step_info = self.status.trace.get((n, l, s), {"skip_token_kv": [], "skip_layer": False})
+        # step_info = self.status.get_skip_token_kv(n, l, s)
+        # if step_info['skip_layer']:
+        #     self.status.update_token_layer(n, l, 2)
+        #     return 0.0
         
         _, D_W = self.status.calculate_data_sizes(n, l, s)
         if (self.status.store_data(D_W)):

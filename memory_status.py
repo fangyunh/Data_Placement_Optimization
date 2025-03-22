@@ -1,5 +1,4 @@
 import random
-import numpy as np
 import csv
 import math
 from abc import ABC, abstractmethod
@@ -63,6 +62,12 @@ class MemStatus(ABC):
             # was not calculated (skip), 3: initial state, unarranged.
             # Default: all layers set to 3 (undecided)
             self.token_layer_status[token_id] = [3] * self.cfg.L
+    
+    def print_token_layer_status(self):
+        print("Final Layer distribution:")
+        for token_id, layers in self.token_layer_status.items():
+            print(f"Token {token_id}: {layers}")
+    
     
     def get_skip_token_kv(self, n, l, s):
         """Return skip_token_kv for step (n, l, s)."""

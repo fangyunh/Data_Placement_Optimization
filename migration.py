@@ -344,7 +344,9 @@ class AlphaMigration(BaseDataMigration):
         deviation = 0.01
         next_n = n + 1
 
-        next_key = (next_n, l, s)
+        # next_key = (next_n, l, s)
+        next_key = next_n
+        
         if next_key not in self.status.trace:
             return [0.0, 0.0, 0.0, 0.0] 
         
