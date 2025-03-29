@@ -98,96 +98,128 @@ experiments = [
     #     'plc_classes': ['AlphaLayersDistribution']
     # },
     
-    # {
-    #     'N': 1024*16,
-    #     'N_pre': 1024,
-    #     'para_num': 0.5,
-    #     'C_HBM_max': 4,
-    #     'filename': '00_1_16.txt',
-    #     'init_class': 'HBMInit',
-    #     'mig_classes': ['NoMigration'],
-    #     'plc_classes': ['PreferHBM']
-    # },
-    # {
-    #     'N': 1024*16,
-    #     'N_pre': 1024,
-    #     'para_num': 0.5,
-    #     'C_HBM_max': 4,
-    #     'filename': '00_1_16.txt',
-    #     'init_class': 'TokenLevelBestRatioInit',
-    #     'mig_classes': ['AlphaMigration'],
-    #     'plc_classes': ['AlphaLayersDistribution']
-    # },
-    # {
-    #     'N': 1024*16,
-    #     'N_pre': 1024,
-    #     'para_num': 0.5,
-    #     'C_HBM_max': 4,
-    #     'inclusive': True,
-    #     'filename': '00_1_16.txt',
-    #     'init_class': 'HBMInit',
-    #     'mig_classes': ['AlphaMigration'],
-    #     'plc_classes': ['AlphaLayersDistribution']
-    # },
-    # 20% sparsity
     {
-        'N': 1024*16,
+        'N': 1024*24,
         'N_pre': 1024,
         'para_num': 0.5,
         'C_HBM_max': 8,
-        'filename': '04_1_16.txt',
+        'filename': '00_1_24.txt',
         'init_class': 'HBMInit',
         'mig_classes': ['NoMigration'],
         'plc_classes': ['PreferHBM']
     },
     {
-        'N': 1024*16,
+        'N': 1024*24,
         'N_pre': 1024,
         'para_num': 0.5,
         'C_HBM_max': 8,
-        'filename': '04_1_16.txt',
+        'filename': '00_1_24.txt',
         'init_class': 'TokenLevelBestRatioInit',
         'mig_classes': ['AlphaMigration'],
         'plc_classes': ['AlphaLayersDistribution']
     },
     {
-        'N': 1024*16,
+        'N': 1024*24,
         'N_pre': 1024,
         'para_num': 0.5,
         'C_HBM_max': 8,
         'inclusive': True,
-        'filename': '04_1_16.txt',
+        'filename': '00_1_24.txt',
         'init_class': 'HBMInit',
         'mig_classes': ['AlphaMigration'],
         'plc_classes': ['AlphaLayersDistribution']
     },
+
     {
-        'N': 1024*16,
+        'N': 1024*24,
         'N_pre': 1024,
         'para_num': 0.5,
-        'C_HBM_max': 12,
-        'filename': '04_1_16.txt',
+        'C_HBM_max': 8,
+        'filename': '02_1_24.txt',
         'init_class': 'HBMInit',
         'mig_classes': ['NoMigration'],
         'plc_classes': ['PreferHBM']
     },
     {
-        'N': 1024*16,
+        'N': 1024*24,
         'N_pre': 1024,
         'para_num': 0.5,
-        'C_HBM_max': 12,
-        'filename': '04_1_16.txt',
+        'C_HBM_max': 8,
+        'filename': '02_1_24.txt',
         'init_class': 'TokenLevelBestRatioInit',
         'mig_classes': ['AlphaMigration'],
         'plc_classes': ['AlphaLayersDistribution']
     },
     {
-        'N': 1024*16,
+        'N': 1024*24,
         'N_pre': 1024,
         'para_num': 0.5,
-        'C_HBM_max': 12,
+        'C_HBM_max': 8,
         'inclusive': True,
-        'filename': '04_1_16.txt',
+        'filename': '02_1_24.txt',
+        'init_class': 'HBMInit',
+        'mig_classes': ['AlphaMigration'],
+        'plc_classes': ['AlphaLayersDistribution']
+    },
+
+    {
+        'N': 1024*24,
+        'N_pre': 1024,
+        'para_num': 0.5,
+        'C_HBM_max': 8,
+        'filename': '04_1_24.txt',
+        'init_class': 'HBMInit',
+        'mig_classes': ['NoMigration'],
+        'plc_classes': ['PreferHBM']
+    },
+    {
+        'N': 1024*24,
+        'N_pre': 1024,
+        'para_num': 0.5,
+        'C_HBM_max': 8,
+        'filename': '04_1_24.txt',
+        'init_class': 'TokenLevelBestRatioInit',
+        'mig_classes': ['AlphaMigration'],
+        'plc_classes': ['AlphaLayersDistribution']
+    },
+    {
+        'N': 1024*24,
+        'N_pre': 1024,
+        'para_num': 0.5,
+        'C_HBM_max': 8,
+        'inclusive': True,
+        'filename': '04_1_24.txt',
+        'init_class': 'HBMInit',
+        'mig_classes': ['AlphaMigration'],
+        'plc_classes': ['AlphaLayersDistribution']
+    },
+    {
+        'N': 1024*24,
+        'N_pre': 1024,
+        'para_num': 0.5,
+        'C_HBM_max': 8,
+        'filename': '06_1_24.txt',
+        'init_class': 'HBMInit',
+        'mig_classes': ['NoMigration'],
+        'plc_classes': ['PreferHBM']
+    },
+    {
+        'N': 1024*24,
+        'N_pre': 1024,
+        'para_num': 0.5,
+        'C_HBM_max': 8,
+        'filename': '06_1_24.txt',
+        'init_class': 'TokenLevelBestRatioInit',
+        'mig_classes': ['AlphaMigration'],
+        'plc_classes': ['AlphaLayersDistribution']
+    },
+    {
+        'N': 1024*24,
+        'N_pre': 1024,
+        'para_num': 0.5,
+        'C_HBM_max': 8,
+        'inclusive': True,
+        'filename': '06_1_24.txt',
         'init_class': 'HBMInit',
         'mig_classes': ['AlphaMigration'],
         'plc_classes': ['AlphaLayersDistribution']

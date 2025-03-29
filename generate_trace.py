@@ -5,7 +5,7 @@ import math
 N = 1024 * 16      # Number of tokens to generate in decode stage
 N_pre = 1024      # Starting token index for decode stage
 L = 32            # Total layers (matches ModelConfig.L)
-sparsity = 0.4    # Target sparsity ratio
+sparsity = 0.0    # Target sparsity ratio
 diff_ratio = 0.03 # Maximum difference ratio between consecutive skip sets
 threshold_factor = 0.1  # Additional factor for threshold (e.g., threshold = sparsity + threshold_factor)
 
