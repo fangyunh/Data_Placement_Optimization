@@ -114,11 +114,17 @@ if __name__ == "__main__":
         if m.lower() == 'baseline':
             continue
         xs = index + offsets[bar_idx]
+        # Custom label formatting
+        if m.lower() == 'sa':
+            label = 'SA'
+        else:
+            label = m.capitalize()
+            
         ax.bar(
             xs,
             scaled[m],
             width=bar_w,
-            label=m.capitalize(),
+            label=label,
             color=colors[m.lower()],
             zorder=2
         )
@@ -172,19 +178,6 @@ if __name__ == "__main__":
     
     ax.grid(axis='y', linestyle='--', alpha=0.7)
     ax.legend(loc='upper left', fontsize=12, frameon=True)
-
-    # bar_idx = 0
-    
-    # # optional: annotate real norm values above each bar
-    # for i, m in enumerate(methods):
-    #     if m.lower() == 'baseline':
-    #         continue
-    #     xs = index + offsets[bar_idx]
-    #     for xi, real_val in zip(xs, norm[m]):
-    #         ax.text(xi, piecewise_scale(real_val, lower_dst=LOWER_DST) + 0.005,
-    #                 f"{real_val:.2f}", ha='center', va='bottom',
-    #                 fontsize=9, fontweight='bold')
-    #     bar_idx += 1
     
     plt.tight_layout()
     plt.savefig("infer.png", dpi=300, bbox_inches="tight")
