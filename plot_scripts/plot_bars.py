@@ -84,7 +84,7 @@ if __name__ == "__main__":
     }
     
     # --- 6) Plotting -----------------------------------
-    plt.figure(figsize=(10, 6), dpi=300)
+    plt.figure(figsize=(10, 4), dpi=300)
     ax = plt.gca()
     
     # bar geometry
@@ -122,6 +122,16 @@ if __name__ == "__main__":
             color=colors[m.lower()],
             zorder=2
         )
+        for xi, real_val in zip(xs, norm[m]):
+            # Position text slightly below the top of bar (0.02 offset)
+            y_pos = piecewise_scale(real_val, lower_dst=LOWER_DST) - 0.02
+            ax.text(xi, y_pos,
+                   f"{real_val:.2f}", 
+                   ha='center', 
+                   va='top',  # Changed from 'bottom' to 'top'
+                   fontsize=9,
+                   fontweight='bold',
+                   color='white')
         bar_idx += 1
 
     # Plot baseline as horizontal line
@@ -163,18 +173,18 @@ if __name__ == "__main__":
     ax.grid(axis='y', linestyle='--', alpha=0.7)
     ax.legend(loc='upper left', fontsize=12, frameon=True)
 
-    bar_idx = 0
+    # bar_idx = 0
     
-    # optional: annotate real norm values above each bar
-    for i, m in enumerate(methods):
-        if m.lower() == 'baseline':
-            continue
-        xs = index + offsets[bar_idx]
-        for xi, real_val in zip(xs, norm[m]):
-            ax.text(xi, piecewise_scale(real_val, lower_dst=LOWER_DST) + 0.005,
-                    f"{real_val:.2f}", ha='center', va='bottom',
-                    fontsize=9, fontweight='bold')
-        bar_idx += 1
+    # # optional: annotate real norm values above each bar
+    # for i, m in enumerate(methods):
+    #     if m.lower() == 'baseline':
+    #         continue
+    #     xs = index + offsets[bar_idx]
+    #     for xi, real_val in zip(xs, norm[m]):
+    #         ax.text(xi, piecewise_scale(real_val, lower_dst=LOWER_DST) + 0.005,
+    #                 f"{real_val:.2f}", ha='center', va='bottom',
+    #                 fontsize=9, fontweight='bold')
+    #     bar_idx += 1
     
     plt.tight_layout()
     plt.savefig("infer.png", dpi=300, bbox_inches="tight")
