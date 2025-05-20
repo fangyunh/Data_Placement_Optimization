@@ -84,7 +84,7 @@ if __name__ == "__main__":
     }
     
     # --- 6) Plotting -----------------------------------
-    plt.figure(figsize=(10, 6), dpi=600)
+    plt.figure(figsize=(10, 6), dpi=300)
     ax = plt.gca()
     
     # bar geometry
@@ -133,7 +133,7 @@ if __name__ == "__main__":
                linewidth=1.0)
         
     # axes labels & ticks
-    ax.set_xlabel('KV Cache Sparse Ratio (%)', fontsize=14)
+    ax.set_xlabel('KV Cache Sparse Ratio (%)', fontsize=14, labelpad=30)
     ax.set_ylabel('Normalized tokens/sec', fontsize=14)
     ax.set_xticks(index)
     ax.set_xticklabels([f"{s}%" for s in sparsities])
@@ -177,5 +177,5 @@ if __name__ == "__main__":
         bar_idx += 1
     
     plt.tight_layout()
-    plt.savefig("inference_throughput_comparison_bar.png", dpi=300, bbox_inches="tight")
+    plt.savefig("infer.png", dpi=300, bbox_inches="tight")
     plt.show()
