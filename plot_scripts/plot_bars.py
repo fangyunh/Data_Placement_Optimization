@@ -101,10 +101,10 @@ if __name__ == "__main__":
     # choose colors automatically
     colors = {
         'baseline': '#ffb6a3',  # Black for baseline
-        'predictive': '#ffd166',  # Blue
-        'sa': '#e76e50',  # Green
-        'lookahead': '#f4a462',  # Orange
-        'best': '#f28482',  # Red
+        'predictive': '#7593af',  # Blue
+        'sa': '#194a7a',  # Green
+        'lookahead': '#7593af',  # Orange
+        'best': '#4b86b4',  # Red
     }
 
     
