@@ -40,7 +40,7 @@ if __name__ == "__main__":
     csv_path = "data/latency_vs_sparsity.csv"
 
     tar_sparsities = [40, 60, 85, 90]
-    tar_methods = ['baseline', 'predictive', 'sa']
+    tar_methods = ['baseline', 'reuse', 'sa']
 
     data = load_latency_data(csv_path, tar_sparsities, tar_methods)
     sparsities = data['sparsity']                   # e.g. [85, 90, …]
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     # choose colors automatically
     colors = {
         'baseline': '#ffb6a3',  # Black for baseline
-        'predictive': '#7593af',  # Blue
+        'reuse': '#7593af',  # Blue
         'sa': '#194a7a',  # Green
         'lookahead': '#7593af',  # Orange
         'best': '#4b86b4',  # Red
@@ -149,7 +149,7 @@ if __name__ == "__main__":
                linewidth=1.0)
         
     # axes labels & ticks
-    ax.set_xlabel('KV Cache Sparse Ratio (%)', fontsize=14, labelpad=30)
+    ax.set_xlabel('Attention Sparsity (%)', fontsize=14, labelpad=30)
     ax.set_ylabel('Normalized tokens/sec', fontsize=14)
     ax.set_xticks(index)
     ax.set_xticklabels([f"{s}%" for s in sparsities])
