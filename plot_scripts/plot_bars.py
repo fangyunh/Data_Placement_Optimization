@@ -39,8 +39,15 @@ if __name__ == "__main__":
     # --- 1) Load your data ----------------------------
     csv_path = "data/latency_vs_sparsity.csv"
 
-    tar_sparsities = [40, 60, 85, 90]
+    tar_sparsities = [40, 50, 60, 80, 85, 90]
     tar_methods = ['baseline', 'reuse', 'sa']
+
+    # Add display name mapping
+    display_names = {
+        'baseline': 'Static Placement',
+        'reuse': 'Reactive Scheduling',
+        'sa': 'SA-Guided Scheduling'
+    }
 
     data = load_latency_data(csv_path, tar_sparsities, tar_methods)
     sparsities = data['sparsity']                   # e.g. [85, 90, …]
@@ -74,7 +81,7 @@ if __name__ == "__main__":
             ]
     
     # --- 5) Piecewise scaling setup -------------------
-    LOWER_DST = (0.0, 0.6)
+    LOWER_DST = (0.0, 1.0)
     scaled = {
         m: [piecewise_scale(x,
                             lower_src=(0.0, 1.0),
@@ -115,10 +122,7 @@ if __name__ == "__main__":
             continue
         xs = index + offsets[bar_idx]
         # Custom label formatting
-        if m.lower() == 'sa':
-            label = 'SA'
-        else:
-            label = m.capitalize()
+        label = display_names[m.lower()]
             
         ax.bar(
             xs,
@@ -144,7 +148,7 @@ if __name__ == "__main__":
     ax.axhline(y=piecewise_scale(1.0, lower_dst=LOWER_DST), 
                color='black', 
                linestyle='--', 
-               label='Baseline',
+               label=display_names['baseline'],
                zorder=3,  # line above the bars
                linewidth=1.0)
         
@@ -157,8 +161,8 @@ if __name__ == "__main__":
     # custom y‐ticks back‐mapped to “real” normalized values
     y_max = max(max(norm[m]) for m in methods) * 1.1
     real_ticks = np.concatenate([
-        np.linspace(0, 1, 6, endpoint=True),
-        np.arange(1.1, np.ceil(y_max*10)/10 + 0.1, 0.1)
+        np.linspace(0, 1, 1, endpoint=True),
+        np.arange(1, np.ceil(y_max*10)/10 + 0.1, 1)
     ])
 
     # real_ticks = np.arange(1.0, np.ceil(y_max*10)/10 + 0.1, 0.1) 
@@ -177,7 +181,7 @@ if __name__ == "__main__":
     
     
     ax.grid(axis='y', linestyle='--', alpha=0.7)
-    ax.legend(loc='upper left', fontsize=12, frameon=True)
+    ax.legend(loc='upper right', fontsize=12, frameon=True)
     
     plt.tight_layout()
     plt.savefig("infer.png", dpi=300, bbox_inches="tight")
