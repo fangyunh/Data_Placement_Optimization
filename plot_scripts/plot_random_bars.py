@@ -3,19 +3,31 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-def load_latency_data(csv_path: str, target_sparsities: list, target_methods: list) -> dict:
+def load_latency_data(csv_path: str, target_randoms: list, target_methods: list) -> dict:
     """
-    Reads a CSV with columns ['sparsity','method','latency'] and returns
-    a dict-of-lists keyed by sparsity and each method.
-    Filters data based on specified sparsities and methods.
+    Reads a CSV with columns ['random','method','latency'] and returns
+    a dict-of-lists keyed by random ratio and each method.
+    Preserves order specified in target_randoms.
     """
     df = pd.read_csv(csv_path)
     # Filter data
-    df = df[df['sparsity'].isin(target_sparsities) & df['method'].isin(target_methods)]
-    pivot = df.pivot(index='sparsity', columns='method', values='latency')
-    data = {'sparsity': pivot.index.tolist()}
+    df = df[df['random'].isin(target_randoms) & df['method'].isin(target_methods)]
+    
+    # Create categorical type with specified order
+    df['random'] = pd.Categorical(df['random'], categories=target_randoms, ordered=True)
+    
+    # Sort by the ordered categorical
+    df = df.sort_values('random')
+    
+    pivot = df.pivot(index='random', columns='method', values='latency')
+    # Important: preserve target_randoms order
+    data = {'random': target_randoms}
     for method in pivot.columns:
-        data[method] = pivot[method].tolist()
+        # Reorder the values according to tar_random
+        values = []
+        for r in target_randoms:
+            values.append(pivot.loc[r, method])
+        data[method] = values
     return data
 
 def piecewise_scale(x, 
@@ -37,9 +49,9 @@ def piecewise_scale(x,
 
 if __name__ == "__main__":
     # --- 1) Load your data ----------------------------
-    csv_path = "data/latency_vs_sparsity.csv"
+    csv_path = "data/dif_random_60.csv"
 
-    tar_sparsities = [40, 50, 60, 80, 85, 90]
+    tar_random = ['low', 'actual', 'high']
     tar_methods = ['baseline', 'reuse', 'page', 'sa', 'best']
 
     # Add display name mapping
@@ -51,53 +63,46 @@ if __name__ == "__main__":
         'best': 'Best Case',
     }
 
-    data = load_latency_data(csv_path, tar_sparsities, tar_methods)
-    sparsities = data['sparsity']                   # e.g. [85, 90, …]
-    methods = [m for m in data.keys() if m != 'sparsity']
+    data = load_latency_data(csv_path, tar_random, tar_methods)
+    randoms = data['random']                   # e.g. [85, 90, …]
+    methods = [m for m in data.keys() if m != 'random']
     
     # --- 2) Compute “real” tokens decoded per run -------
     decode_token = 41538 - 31299   # e.g. 1024 * 12
-    real_decode = [decode_token * (1 - s / 100.0) for s in sparsities]
+    real_decode = decode_token * 0.4
     
     # --- 3) Tokens per second --------------------------
     tokens_per_sec = {}
     for m in methods:
         tokens_per_sec[m] = [
-            real_decode[i] / data[m][i]
-            for i in range(len(sparsities))
+            real_decode / data[m][i]
+            for i in range(len(randoms))
         ]
     
-    # --- 4) Normalize (Baseline → 1.0) -----------------
-    baseline = tokens_per_sec.get('baseline') or tokens_per_sec.get('Baseline')
-    if baseline is None:
-        raise ValueError("No 'baseline' column found for normalization")
+    # --- 4) Normalize (Best → 1.0) -----------------
+    best_case = tokens_per_sec.get('best') or tokens_per_sec.get('Best')
+    if best_case is None:
+        raise ValueError("No 'best' column found for normalization")
     
     norm = {}
     for m in methods:
-        if m.lower() == 'baseline':
-            norm[m] = [1.0] * len(sparsities)
+        if m.lower() == 'best':
+            norm[m] = [1.0] * len(randoms)  # Best case is always 1.0
         else:
             norm[m] = [
-                tokens_per_sec[m][i] / baseline[i]
-                for i in range(len(sparsities))
+                tokens_per_sec[m][i] / best_case[i]  # Divide by best value at each point
+                for i in range(len(randoms))
             ]
     
     # --- 5) Piecewise scaling setup -------------------
-    LOWER_DST = (0.0, 1.0)
-    scaled = {
-        m: [piecewise_scale(x,
-                            lower_src=(0.0, 1.0),
-                            lower_dst=LOWER_DST)
-            for x in norm[m]]
-        for m in methods
-    }
+    scaled = norm
     
     # --- 6) Plotting -----------------------------------
     plt.figure(figsize=(10, 4), dpi=300)
     ax = plt.gca()
 
     # Define plotting order and filter out baseline and best
-    plot_order = [m for m in tar_methods if m.lower() not in ['baseline']]
+    plot_order = [m for m in tar_methods if m.lower() not in ['best']]
     n_methods = len(plot_order)  # Only count methods that will be bars
     
     # bar geometry
@@ -107,13 +112,13 @@ if __name__ == "__main__":
     group_gap = 0.2
     total_w = n_methods * bar_w + (n_methods - 1) * gap
     # x positions for each group
-    index = np.arange(len(sparsities)) * (total_w + group_gap)
+    index = np.arange(len(randoms)) * (total_w + group_gap)
     # offsets to center each bar in a group
     offsets = (np.arange(n_methods) * (bar_w + gap)) - (total_w/2) + (bar_w/2)
     
     # choose colors automatically
     colors = {
-        'baseline': '#ffb6a3',  # Black for baseline
+        'baseline': '#126d82',  # Black for baseline
         'reuse': '#baccd9',  # Blue
         'page': '#5697c3',  # Orange
         'sa': '#11659a',  # Green
@@ -124,7 +129,7 @@ if __name__ == "__main__":
     # Plot bars for non-baseline methods
     bar_idx = 0
     for m in plot_order:
-        if m.lower() == ['baseline']:
+        if m.lower() == ['best']:
             continue
         xs = index + offsets[bar_idx]
         # Custom label formatting
@@ -151,12 +156,13 @@ if __name__ == "__main__":
         bar_idx += 1
 
     # Plot baseline as horizontal line
-    ax.axhline(y=piecewise_scale(1.0, lower_dst=LOWER_DST), 
-               color='black', 
-               linestyle='--', 
-               label=display_names['baseline'],
-               zorder=3,  # line above the bars
-               linewidth=1.0)
+    # Update baseline line to show its relative performance to best
+    # ax.axhline(y=piecewise_scale(norm['baseline'][0], lower_dst=LOWER_DST), 
+    #            color='black', 
+    #            linestyle='--', 
+    #            label=display_names['baseline'],
+    #            zorder=3,
+    #            linewidth=1.0)
 
     # Plot best case line connecting normalized points
     # best_ys = [piecewise_scale(y, lower_dst=LOWER_DST) for y in norm['best']]
@@ -176,29 +182,17 @@ if __name__ == "__main__":
 
         
     # axes labels & ticks
-    ax.set_xlabel('Attention Sparsity (%)', fontsize=14, labelpad=30)
+    ax.set_xlabel('Randomness', fontsize=14, labelpad=30)
     ax.set_ylabel('Normalized tokens/sec', fontsize=14)
     ax.set_xticks(index)
-    ax.set_xticklabels([f"{s}%" for s in sparsities])
+    ax.set_xticklabels(tar_random)
     
     # custom y‐ticks back‐mapped to “real” normalized values
-    y_max = max(max(norm[m]) for m in methods) * 1.1
-    real_ticks = np.concatenate([
-        np.linspace(0, 1, 1, endpoint=True),
-        np.arange(1, np.ceil(y_max*10)/10 + 0.1, 1)
-    ])
-
-    # real_ticks = np.arange(1.0, np.ceil(y_max*10)/10 + 0.1, 0.1) 
-
-    plot_ticks = [piecewise_scale(t,
-                                  lower_src=(0.0, 1.0),
-                                  lower_dst=LOWER_DST)
-                  for t in real_ticks]
-    ax.set_yticks(plot_ticks)
-    ax.set_yticklabels([f"{t:.1f}" for t in real_ticks])
-    ax.set_ylim(0, piecewise_scale(y_max,
-                                   lower_src=(0.0, 1.0),
-                                   lower_dst=LOWER_DST))
+    y_max = max(max(norm[m]) for m in methods) * 1.3
+    y_ticks = np.arange(0, 1.1, 0.1)  # Ticks from 0 to 1 in 0.1 steps
+    ax.set_yticks(y_ticks)
+    ax.set_yticklabels([f"{t:.1f}" for t in y_ticks])
+    ax.set_ylim(0, 1.0)
     # ax.set_ylim(piecewise_scale(0, lower_dst=LOWER_DST),  # Start y-axis slightly below 1.0
     #             piecewise_scale(y_max, lower_src=(0.0, 1.0), lower_dst=LOWER_DST))
     
@@ -215,5 +209,5 @@ if __name__ == "__main__":
     )
     
     plt.tight_layout()
-    plt.savefig("infer.png", dpi=300, bbox_inches="tight")
+    plt.savefig("random.png", dpi=300, bbox_inches="tight")
     plt.show()
