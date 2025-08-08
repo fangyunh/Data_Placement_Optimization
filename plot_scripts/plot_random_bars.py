@@ -118,11 +118,11 @@ if __name__ == "__main__":
     
     # choose colors automatically
     colors = {
-        'baseline': '#126d82',  # Black for baseline
+        'baseline': '#5a6d8c',  # Black for baseline
         'reuse': '#baccd9',  # Blue
         'page': '#5697c3',  # Orange
         'sa': '#11659a',  # Green
-        'best': '#126d82',  # Red
+        'best': '#5a6d8c',  # Red
     }
 
     
@@ -182,7 +182,7 @@ if __name__ == "__main__":
 
         
     # axes labels & ticks
-    ax.set_xlabel('Randomness', fontsize=14, labelpad=30)
+    ax.set_xlabel('Randomness', fontsize=14)
     ax.set_ylabel('Normalized tokens/sec', fontsize=14)
     ax.set_xticks(index)
     ax.set_xticklabels(tar_random)
