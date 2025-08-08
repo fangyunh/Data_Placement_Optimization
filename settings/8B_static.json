@@ -1,0 +1,12 @@
+{
+    "setting": "Scaled LLaMA-3-8B 8:1 static placement",
+    "para_num": 8,
+    "C_HBM_max": 23,
+    "inclusive": true,
+    "best": false,
+    "filename": "data/narativeqa/random_low_0.60.csv",
+    "sparsity": 0.60,
+    "init_class": "HBMInit",
+    "mig_classes": ["NoMigration"],
+    "plc_classes": ["PreferHBM"]
+}

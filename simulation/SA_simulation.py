@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
-from memory_status import ModelConfig, MemStatus, ScaledLLaMa3_8BConfig
+from simulator.simulation.memory_status import ModelConfig, MemStatus, ScaledLLaMa3_8BConfig
 from collections import Counter
 import multiprocessing as mp
 from functools import partial
 
 from simulator import ModelConfig, MemorySimulator, TraceReader
-from memory_status import TokenLevelBestRatioInit
+from simulator.simulation.memory_status import TokenLevelBestRatioInit
 from placement import LookAheadOnePlacement
-from migration import SAMigration
+from simulator.simulation.migration import SAMigration
 import random
 import math
 import numpy as np
