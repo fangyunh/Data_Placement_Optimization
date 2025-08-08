@@ -154,7 +154,8 @@ if __name__ == "__main__":
     ax.axhline(y=piecewise_scale(1.0, lower_dst=LOWER_DST), 
                color='black', 
                linestyle='--', 
-               label=display_names['baseline'],
+               # label=display_names['baseline'],
+               label='_nolegend_',
                zorder=3,  # line above the bars
                linewidth=1.0)
 
@@ -179,7 +180,7 @@ if __name__ == "__main__":
     ax.set_xlabel('Attention Sparsity (%)', fontsize=14, labelpad=30)
     ax.set_ylabel('Normalized tokens/sec', fontsize=14)
     ax.set_xticks(index)
-    ax.set_xticklabels([f"{s}%" for s in sparsities])
+    ax.set_xticklabels([f"{s}%" for s in sparsities], fontsize=13)
     
     # custom y‐ticks back‐mapped to “real” normalized values
     y_max = max(max(norm[m]) for m in methods) * 1.1
@@ -208,8 +209,8 @@ if __name__ == "__main__":
     ax.legend(
         loc='upper center',  # Position at top center
         bbox_to_anchor=(0.5, 1.15),  # Adjust vertical position above plot
-        ncol=5,  # Show all items in one row
-        fontsize=9,
+        ncol=4,  # Show all items in one row
+        fontsize=11,
         frameon=True,
         borderaxespad=0.
     )

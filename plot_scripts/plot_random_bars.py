@@ -185,7 +185,7 @@ if __name__ == "__main__":
     ax.set_xlabel('Randomness', fontsize=14)
     ax.set_ylabel('Normalized tokens/sec', fontsize=14)
     ax.set_xticks(index)
-    ax.set_xticklabels(tar_random)
+    ax.set_xticklabels(tar_random, fontsize=13)
     
     # custom y‐ticks back‐mapped to “real” normalized values
     y_max = max(max(norm[m]) for m in methods) * 1.3
@@ -203,7 +203,7 @@ if __name__ == "__main__":
         loc='upper center',  # Position at top center
         bbox_to_anchor=(0.5, 1.15),  # Adjust vertical position above plot
         ncol=5,  # Show all items in one row
-        fontsize=9,
+        fontsize=10,
         frameon=True,
         borderaxespad=0.
     )
