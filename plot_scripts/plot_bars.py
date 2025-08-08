@@ -177,10 +177,10 @@ if __name__ == "__main__":
 
         
     # axes labels & ticks
-    ax.set_xlabel('Attention Sparsity (%)', fontsize=14, labelpad=30)
-    ax.set_ylabel('Normalized tokens/sec', fontsize=14)
+    ax.set_xlabel('Attention Sparsity (%)', fontsize=18, labelpad=30)
+    ax.set_ylabel('Normalized tokens/sec', fontsize=16)
     ax.set_xticks(index)
-    ax.set_xticklabels([f"{s}%" for s in sparsities], fontsize=13)
+    ax.set_xticklabels([f"{s}%" for s in sparsities], fontsize=14)
     
     # custom y‐ticks back‐mapped to “real” normalized values
     y_max = max(max(norm[m]) for m in methods) * 1.1

@@ -182,10 +182,10 @@ if __name__ == "__main__":
 
         
     # axes labels & ticks
-    ax.set_xlabel('Randomness', fontsize=14)
-    ax.set_ylabel('Normalized tokens/sec', fontsize=14)
+    ax.set_xlabel('Randomness', fontsize=18)
+    ax.set_ylabel('Normalized tokens/sec', fontsize=18)
     ax.set_xticks(index)
-    ax.set_xticklabels(tar_random, fontsize=13)
+    ax.set_xticklabels(tar_random, fontsize=16)
     
     # custom y‐ticks back‐mapped to “real” normalized values
     y_max = max(max(norm[m]) for m in methods) * 1.3
