@@ -48,7 +48,7 @@ if __name__ == "__main__":
         'reuse': 'Reactive Scheduling',
         'sa': 'SA-Guided Scheduling',
         'page': 'Page Granularity Scheduling',
-        'best': 'Best Case',
+        'best': 'Unlimited HBM',
     }
 
     data = load_latency_data(csv_path, tar_sparsities, tar_methods)
@@ -178,7 +178,7 @@ if __name__ == "__main__":
         
     # axes labels & ticks
     ax.set_xlabel('Attention Sparsity (%)', fontsize=18, labelpad=30)
-    ax.set_ylabel('Normalized tokens/sec', fontsize=16)
+    ax.set_ylabel('Normalized tokens/sec', fontsize=14)
     ax.set_xticks(index)
     ax.set_xticklabels([f"{s}%" for s in sparsities], fontsize=14)
     
