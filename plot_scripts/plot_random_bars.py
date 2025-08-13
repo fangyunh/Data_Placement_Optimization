@@ -182,7 +182,7 @@ if __name__ == "__main__":
 
         
     # axes labels & ticks
-    ax.set_xlabel('Tokens Importance Variation', fontsize=18)
+    ax.set_xlabel('Token Importance Variation', fontsize=18)
     ax.set_ylabel('Normalized tokens/sec', fontsize=18)
     ax.set_xticks(index)
     ax.set_xticklabels(tar_random, fontsize=16)
