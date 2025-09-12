@@ -5,6 +5,7 @@ import sys
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
+import numpy as np  # NEW: needed for compact x positions
 
 CSV_PATH = "data/hbm_hit_rate_60.csv"
 
@@ -36,12 +37,13 @@ plt.rcParams.update({
     "figure.dpi": 300,
     "savefig.dpi": 300,
     "font.family": "DejaVu Serif",
-    "font.size": 9,
-    "axes.labelsize": 10,
-    "xtick.labelsize": 9,
-    "ytick.labelsize": 9,
+    "font.size": 8,
+    "axes.labelsize": 9,
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
     "pdf.fonttype": 42,
     "ps.fonttype": 42,
+    "axes.xmargin": 0.01,  # NEW: reduce default side padding
 })
 
 def _to_percent_series(s: pd.Series) -> pd.Series:
@@ -75,21 +77,23 @@ def load_and_prepare(csv_path: str) -> pd.DataFrame:
     return out
 
 def plot_hbm(df: pd.DataFrame, outfile_png: str = "hbm_hit_rate.png"):
-    # ---------- NEW: dynamically size figure width to fit legend on one line ----------
-    present = list(df["method_key"].unique())
-    legend_labels = ["Model weight ratio"]  # keep only the weight legend
-
-    legend_fontsize = 8
-    avg_char_width_in = legend_fontsize * 0.6 / 72.0  # ~0.6em at given fontsize
+    # ---------- Figure width heuristic (kept) ----------
+    legend_labels = ["model weight ratio"]
+    legend_fontsize = 7
+    avg_char_width_in = legend_fontsize * 0.6 / 72.0
     text_inches = sum(len(lbl) for lbl in legend_labels) * avg_char_width_in
-    handle_gap_inches = 0.40 * len(legend_labels)       # room for handles & gaps
-    fig_w = max(4.0, text_inches + handle_gap_inches)  # minimum 6in, else fit text
-    # ----------------------------------------------------------------------------------
+    handle_gap_inches = 0.40 * len(legend_labels)
+    fig_w = max(3.0, text_inches + handle_gap_inches)
+    # ---------------------------------------------------
 
-    fig, ax = plt.subplots(figsize=(fig_w, 3.2))
+    fig, ax = plt.subplots(figsize=(fig_w, 1.6))
 
-    x = range(len(df))
-    bar_w = 0.38
+    # ---- NEW: compact spacing between bar centers ----
+    BAR_SPACING = 0.3          # < 1.0 packs bars closer than default
+    BAR_WIDTH   = 0.18
+    x = np.arange(len(df)) * BAR_SPACING
+    bar_w = BAR_SPACING * 0.85  # wide bars relative to spacing
+    # --------------------------------------------------
 
     clipped = False
     weight_portion, remainder_portion = [], []
@@ -102,58 +106,52 @@ def plot_hbm(df: pd.DataFrame, outfile_png: str = "hbm_hit_rate.png"):
 
     for i, (m_key, w, r) in enumerate(zip(df["method_key"], weight_portion, remainder_portion)):
         base_color = METHOD_COLORS.get(m_key, "#9e9e9e")
-        ax.bar(i, w, width=bar_w, color=WEIGHT_FACE, edgecolor=EDGE_COLOR,
+        ax.bar(x[i], w, width=BAR_WIDTH, color=WEIGHT_FACE, edgecolor=EDGE_COLOR,
                hatch=WEIGHT_HATCH, linewidth=0.6, zorder=2)
-        ax.bar(i, r, bottom=w, width=bar_w, color=base_color, edgecolor=EDGE_COLOR,
+        ax.bar(x[i], r, bottom=w, width=BAR_WIDTH, color=base_color, edgecolor=EDGE_COLOR,
                linewidth=0.6, zorder=2)
-        ax.text(i, w + r + 0.8, f"{w + r:.1f}%", ha="center", va="bottom", fontsize=8)
+        ax.text(x[i], w + r + 0.8, f"{w + r:.1f}%", ha="center", va="bottom", fontsize=5)
 
-    # Modify the method names to have line breaks
+    # Modified method labels (kept)
     method_labels = []
     for k in df["method_key"]:
         name = display_names.get(k, k.capitalize())
         if ' ' in name:
-            # Split at the first space and join with newline
             words = name.split(' ', 1)
             name = f"{words[0]}\n{words[1]}"
         method_labels.append(name)
-        
+
     ax.set_xticks(list(x))
-    # ax.set_xticklabels([display_names.get(k, k.capitalize()) for k in df["method_key"]],
-    #                    rotation=0, fontsize=7)  # smaller x-tick labels
-    ax.set_xticklabels(method_labels,
-                       rotation=0, 
-                       fontsize=7,
-                       ha='center',  # Center align the text
-                       va='top')  # Vertically center the text
+    ax.set_xticklabels(method_labels, rotation=0, fontsize=5, ha='center', va='top')
     ax.set_ylabel("HBM hit rate (%)", fontsize=9)
 
     ymax = max(100.0, (df["hbm_hit_rate"].max() + 6))
     ax.set_ylim(0, min(100.0, ymax) if df["hbm_hit_rate"].max() <= 100 else ymax)
 
-    ax.grid(axis="y", linestyle=":", linewidth=0.8)
+    # ax.grid(axis="y", linestyle=":", linewidth=0.8)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
-    method_handles = []
-    for m in PREFERRED_ORDER:
-        if m in present:
-            method_handles.append(Patch(facecolor=METHOD_COLORS[m], edgecolor=EDGE_COLOR,
-                                        label=display_names.get(m, m.capitalize())))
-    weight_handle = Patch(facecolor=WEIGHT_FACE, edgecolor=EDGE_COLOR, hatch=WEIGHT_HATCH,
-                          label="Model weight")
+    # NEW: tighten side limits so bars sit snugly inside the frame
+    if len(x) > 0:
+        pad = max(0.005, 0.5 * (BAR_SPACING - BAR_WIDTH))
+        ax.set_xlim(x[0] - BAR_WIDTH/2 - pad, x[-1] + BAR_WIDTH/2 + pad)
+    ax.margins(x=0.01)
 
+    # Legend (kept to only weight handle)
+    weight_handle = Patch(facecolor=WEIGHT_FACE, edgecolor=EDGE_COLOR, hatch=WEIGHT_HATCH,
+                          label="model weight ratio")
     ax.legend(handles=[weight_handle],
               loc="upper center",
               frameon=False,
               bbox_to_anchor=(0.5, 1.12),
-              ncol=1,          # keep single line
+              ncol=1,
               fontsize=legend_fontsize,
               handlelength=1.4,
               borderaxespad=0.2)
 
     fig.tight_layout(pad=0.6)
-    plt.subplots_adjust(bottom=0.25)
+    plt.subplots_adjust(bottom=0.22)
     fig.savefig(outfile_png, bbox_inches="tight")
 
     if clipped:
