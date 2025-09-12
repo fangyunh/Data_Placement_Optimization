@@ -152,6 +152,10 @@ class MemorySimulator(ABC):
         self.best = best
         self.total_time = 0.0
         self.step_details = []
+        self.total_alpha = 0.0  # Add this line to track sum of alphas
+        self.total_model_weight_ratio = 0.0
+        self.step_count = 0
+        self.model_weight_ratio = 0.0 
 
     def calculate_step_time(self, n: int, l: int, 
                        alpha, beta: float, 
@@ -163,6 +167,10 @@ class MemorySimulator(ABC):
         # should modify the way to calculate time, inclusive / exclusive
         # represents the ratio of KV cache.
         # Calculate HBM time
+
+        # Calculate model weight ratio in total read
+        self.model_weight_ratio = self.status.model_weight_read_per_step / D_R
+
 
         if self.best:
             alpha = min(self.cfg.C_HBM_max / D_R, self.cfg.best_alpha)
@@ -178,26 +186,28 @@ class MemorySimulator(ABC):
                                         self.cfg.B_ext_internal)
         
         # when internal bw larger than interface read
-        ext_write_large = (D_W) / min(self.cfg.B_ext_interface_W, self.cfg.B_ext_internal - self.cfg.B_ext_interface_R)
+        # ext_write_large = (D_W) / min(self.cfg.B_ext_interface_W, self.cfg.B_ext_internal - self.cfg.B_ext_interface_R)
         # when internal bw smaller than interface read
-        ext_write_small = (D_W) / self.cfg.B_ext_internal
+        # ext_write_small = (D_W) / self.cfg.B_ext_internal
+
+        # ext_write_migration = 0
+        # if self.cfg.B_ext_interface_R <= self.cfg.B_ext_internal:
+        #     ext_write_migration = max(ext_read, ext_write_large)
+        # else:
+        #     ext_write_migration = ext_read + ext_write_small
         
         # New write + migration calculation
-        # write_migration = 0.0
-        # internal_migration = 0.0
+        write_migration = 0.0
+        internal_migration = 0.0
+        read_migration = 0.0
 
-        # write_migration = (ext_MW + D_W) / self.cfg.B_ext_interface_W if self.cfg.B_ext_interface_R > 0 else 0 # delete beta_ext * D_W because can be covered in the read stage.
-        # internal_migration = (ext_MW + ext_MR + D_W) / self.cfg.B_ext_internal if self.cfg.B_ext_internal > 0 else 0
-        # read_migration = ext_MR / self.cfg.B_ext_interface_R if self.cfg.B_ext_interface_R > 0 else 0
+        write_migration = (ext_MW + D_W) / self.cfg.B_ext_interface_W if self.cfg.B_ext_interface_R > 0 else 0 # delete beta_ext * D_W because can be covered in the read stage.
+        internal_migration = (ext_MW + ext_MR + D_W) / self.cfg.B_ext_internal if self.cfg.B_ext_internal > 0 else 0
+        read_migration = ext_MR / self.cfg.B_ext_interface_R if self.cfg.B_ext_interface_R > 0 else 0
         
-        # ext_write_migration = max(write_migration, read_migration, internal_migration)
-        ext_write_migration = 0
-        if self.cfg.B_ext_interface_R <= self.cfg.B_ext_internal:
-            ext_write_migration = max(ext_read, ext_write_large)
-        else:
-            ext_write_migration = ext_read + ext_write_small
+        ext_write_migration = max(write_migration, read_migration, internal_migration)
         
-        T_ext = ext_write_migration
+        T_ext = ext_write_migration + ext_read  # in ns
         
         return max(T_HBM, T_ext)
     
@@ -211,6 +221,9 @@ class MemorySimulator(ABC):
         """
         self.total_time = 0.0
         self.step_details = []
+        self.total_alpha = 0.0  # Reset alpha sum
+        self.step_count = 0     # Reset step count
+        self.total_model_weight_ratio = 0.0
 
         total_steps = self.cfg.N * self.cfg.L
         
@@ -229,6 +242,11 @@ class MemorySimulator(ABC):
                 alpha = self.plc.alpha_strategy(n, l)
                 beta = self.plc.beta_strategy(n, l)
                 migration_data = self.mig.migration_strategy(n, l)
+
+                # Track alpha values
+                self.total_alpha += alpha
+                self.total_model_weight_ratio += self.model_weight_ratio
+                self.step_count += 1
                 
                 # Calculate step time
                 step_time = self.calculate_step_time(n, l, alpha, beta, 
@@ -248,7 +266,7 @@ class MemorySimulator(ABC):
                 progress_bar.update(1)
                 progress_bar.set_postfix(n=n, l=l, refresh=False)
         progress_bar.close()
-        return self.total_time
+        return self.total_time, self.total_alpha / self.step_count, self.total_model_weight_ratio / self.step_count
 
 # simulator.py (updated run_simulation function)
 def run_simulation(init_class: MemStatus, config_params: dict, 
@@ -268,7 +286,9 @@ def run_simulation(init_class: MemStatus, config_params: dict,
             N=N_tk,
             N_pre=N_pre_tk,
             para_num=config_params.get('para_num', 0.5),
-            C_HBM_max=config_params.get('C_HBM_max', 3)
+            C_HBM_max=config_params.get('C_HBM_max', 3),
+            B_ext_R=config_params.get('B_ext_R', 450),
+            B_ext_W=config_params.get('B_ext_W', 450)
         )
 
     # 🔥 Use passed strategy classes instead of hardcoded
@@ -302,10 +322,11 @@ def run_simulation(init_class: MemStatus, config_params: dict,
                 
                 simulator = MemorySimulator(config, test_initial_state, 
                                         placement_instance, mig_instance, best)
-                total_time = simulator.simulate()
+                total_time, avg_hit_rate, avg_model_weight_ratio = simulator.simulate()
                 # avg_alpha = sum(step['alpha'] for step in simulator.step_details) / len(simulator.step_details)
                 
                 print(f"Combination: {p_cls.__name__} + {m_cls.__name__}")
+                print(f"Internal bandwidth for read {config.B_ext_interface_R} GB/s, and write {config.B_ext_interface_W} GB/s")
                 print(f"Total time: {total_time:.8f} ns, {total_time/1e9:.8f} seconds, coarse upper bound: {best}")
                 #print(f"Avg alpha: {avg_alpha:.6f}")
                 print(f"Alpha:")
@@ -313,6 +334,9 @@ def run_simulation(init_class: MemStatus, config_params: dict,
                 last_alpha = next(step['alpha'] for step in simulator.step_details
                                 if step['n'] == last_n and step['l'] == 31)
                 print(f"n={last_n}, alpha = {last_alpha:.8f}")
+                print(f"Average HBM hit rate: {avg_hit_rate:.4f}")
+                print(f"Average model weight ratio in HBM hits: {avg_model_weight_ratio:.4f}")
+                print("-" * 30)
 
                 # test_initial_state.print_token_layer_status()
     
@@ -370,6 +394,8 @@ if __name__ == "__main__":
                        help='Migration class names separated by spaces')
     parser.add_argument('--plc_classes', type=str, nargs='+', required=True,
                        help='Placement class names separated by spaces')
+    parser.add_argument('--B_ext_R', type=float, default=450)
+    parser.add_argument('--B_ext_W', type=float, default=450)
     parser.add_argument('--log_file', type=str, default="simulation.txt")
     parser.add_argument('--best', type=str2bool, default=False)
     args = parser.parse_args()
@@ -390,7 +416,9 @@ if __name__ == "__main__":
         'C_HBM_max': args.C_HBM_max,
         'filename': args.filename,
         'inclusive': args.inclusive,
-        'best': args.best
+        'best': args.best,
+        'B_ext_R': args.B_ext_R,
+        'B_ext_W': args.B_ext_W
     }
     
     with open(args.log_file, 'w') as f:

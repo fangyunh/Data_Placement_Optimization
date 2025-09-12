@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
-from simulator.simulation.memory_status import ModelConfig, MemStatus, ScaledLLaMa3_8BConfig
+from memory_status import ModelConfig, MemStatus, ScaledLLaMa3_8BConfig
 from collections import Counter
 import multiprocessing as mp
 from functools import partial
 
 from simulator import ModelConfig, MemorySimulator, TraceReader
-from simulator.simulation.memory_status import TokenLevelBestRatioInit
+from memory_status import TokenLevelBestRatioInit
 from placement import LookAheadOnePlacement
-from simulator.simulation.migration import SAMigration
+from migration import SAMigration
 import random
 import math
 import numpy as np
@@ -72,9 +72,12 @@ def evaluate_latency_parallel(params: dict, window_size: int, topk_ratio: float,
             # Run evaluations in parallel
             results = pool.map(eval_partial, slices)
             
-        # Sum up all latencies
-        total_latency = sum(results)
-        return total_latency
+        # Sum up all latencies and average hit rates
+        total_latency = sum(latency for latency, _, _ in results)
+        avg_hit_rate = sum(hit_rate for _, hit_rate, _ in results) / len(results)
+        avg_model_weight_ratio = sum(model_weight for _, _, model_weight in results) / len(results)
+        
+        return total_latency, avg_hit_rate, avg_model_weight_ratio
 
     except Exception as e:
         print(f"Error in parallel evaluation: {str(e)}")
@@ -85,7 +88,7 @@ def evaluate_split(token_pairs, fn: str, params:dict, inclusive: bool,
     """Evaluate a specific range of tokens"""
     try:
         start_tk, end_tk = token_pairs
-        
+        print(f"Evaluating split {start_tk}-{end_tk}")
         with TraceReader(fn) as trace_reader:
 
             # Create base config
@@ -113,14 +116,13 @@ def evaluate_split(token_pairs, fn: str, params:dict, inclusive: bool,
             )
             
             # Run simulation for this split
-            split_latency = simulator.simulate()
-            return split_latency
+            split_latency, avg_hit_rate, avg_model_weight_ratio = simulator.simulate()
+            print(f"Split {start_tk}-{end_tk} latency: {split_latency}")
+            return split_latency, avg_hit_rate, avg_model_weight_ratio
 
-    except Exception:
-        import traceback, sys
-        traceback.print_exc()      # show in worker stderr
-        sys.stderr.flush()
-        raise   
+    except Exception as e:
+        print(f"Error in split {start_tk}-{end_tk}: {str(e)}")
+        return float('inf')  
 
 def evaluate_latency(params: dict, window_size, topk_ratio) -> float:
 
@@ -184,12 +186,14 @@ def simulated_annealing_parallel(params: dict, log_file: str, max_iter: int = 10
     # Initial state
     current_window = 5
     current_topk = 0.5
-    current_latency = evaluate_latency_parallel(params, current_window, current_topk, n_splits)
+    current_latency, current_hit_rate, current_model_weight = evaluate_latency_parallel(params, current_window, current_topk, n_splits)
     
     # Best state tracking
     best_window = current_window
     best_topk = current_topk
     best_latency = current_latency
+    best_hit_rate = current_hit_rate
+    best_model_weight = current_model_weight
     temp = initial_temp
     
     for i in range(max_iter):
@@ -198,7 +202,7 @@ def simulated_annealing_parallel(params: dict, log_file: str, max_iter: int = 10
         new_topk = max(0.1, min(1.0, current_topk + random.uniform(-0.3, 0.3)))
         
         # Evaluate new state in parallel
-        new_latency = evaluate_latency_parallel(params, new_window, new_topk, n_splits)
+        new_latency, new_hit_rate, new_model_weight = evaluate_latency_parallel(params, new_window, new_topk, n_splits)
         
         # Calculate delta and accept/reject
         delta = new_latency - current_latency
@@ -206,11 +210,15 @@ def simulated_annealing_parallel(params: dict, log_file: str, max_iter: int = 10
             current_window = new_window
             current_topk = new_topk
             current_latency = new_latency
+            current_hit_rate = new_hit_rate
+            current_model_weight = new_model_weight
             
             if current_latency < best_latency:
                 best_window = current_window
                 best_topk = current_topk
                 best_latency = current_latency
+                best_hit_rate = current_hit_rate
+                best_model_weight = current_model_weight
         
         # Cool down
         temp *= cooling_rate
@@ -221,11 +229,14 @@ def simulated_annealing_parallel(params: dict, log_file: str, max_iter: int = 10
             f.write(f"  Temperature: {temp:.2f}\n")
             f.write(f"  Current: window={current_window}, topk={current_topk:.2f}\n")
             f.write(f"  Current latency: {current_latency:.8f}\n")
+            f.write(f"  Current HBM hit rate: {current_hit_rate:.4f}\n")
             f.write(f"  Best latency: {best_latency:.8f}\n")
+            f.write(f"  Best HBM hit rate: {best_hit_rate:.4f}\n")
+            f.write(f"  Best model weight ratio: {best_model_weight:.4f}\n")
             f.write("="*50 + "\n")
             f.flush()
     
-    return best_window, best_topk, best_latency
+    return best_window, best_topk, best_latency, best_hit_rate
 
 def simulated_annealing(params: dict, log_file: str, max_iter: int = 100, 
                         initial_temp: float = 100.0, cooling_rate: float = 0.95):
@@ -341,7 +352,7 @@ def main():
     n_splits = max(1, mp.cpu_count() - 3)
 
     try:
-        best_window, best_topk, best_latency = simulated_annealing_parallel(
+        best_window, best_topk, best_latency, best_hit_rate, best_model_weight = simulated_annealing_parallel(
             test_params,
             args.log_file,
             max_iter=40,
@@ -356,6 +367,8 @@ def main():
             f.write(f"  Window Size: {best_window}\n")
             f.write(f"  Top-k Ratio: {best_topk:.3f}\n")
             f.write(f"\nBest latency: {best_latency:.8f} ns ({best_latency/1e9:.8f} seconds)\n")
+            f.write(f"Best HBM hit rate: {best_hit_rate:.4f}\n")
+            f.write(f"Best model weight ratio: {best_model_weight:.4f}\n")
     except Exception as e:
         with open(args.log_file, 'a') as f:
             f.write(f"\nOptimization failed: {str(e)}\n")

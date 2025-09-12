@@ -16,10 +16,12 @@ experiments = [
 
     {
         'para_num': 8,
-        'C_HBM_max': 23,
+        'C_HBM_max': 25,
+        'B_ext_R': 300,
+        'B_ext_W': 300,
         'inclusive': True,
         'best': False,
-        'filename': 'data/narativeqa/random_low_0.60.csv',
+        'filename': 'data/narativeqa/narativeqa_60.csv',
         'sparsity': 0.60,
     },
 ]
@@ -34,7 +36,7 @@ def run_experiment(config):
     
     # Build command
     cmd = [
-        'python', 'SA_simulation.py',
+        'python', 'simulation/SA_simulation.py',
         '--para_num', str(config['para_num']),
         '--C_HBM_max', str(config['C_HBM_max']),
         '--filename', str(config['filename']),

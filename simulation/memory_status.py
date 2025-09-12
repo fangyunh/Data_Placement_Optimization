@@ -11,7 +11,7 @@ class ModelConfig():
     # Model architecture parameters
     # llama 3.1 8B settng
     def __init__(self, N=1024*8, N_pre=256, para_num=8, 
-                C_HBM_max=3):
+                C_HBM_max=3, B_ext_R=450, B_ext_W=450):
         self.L: int = 32          # Number of layers
         self.d: int = 4096        # Hidden dimension e.g. 8192, with 8192, 1024 tokens = 1GB, 1 layer = 32KB, md_read_l = 0.5GB
                                   # With 4096, 1 layer = 16KB, 2048 tokens = 1GB, md_read_l = 0.0078125 GB
@@ -22,8 +22,8 @@ class ModelConfig():
         
         # Memory parameters
         self.B_HBM: float = 4900  # HBM bandwidth in GB/s  e.g 4.8TB/s  B/ns
-        self.B_ext_interface_R: float = 450  # External memory interface read (GB/s) B/ns
-        self.B_ext_interface_W: float = 450  # External memory interface write (GB/s) B/ns
+        self.B_ext_interface_R: float = B_ext_R  # External memory interface read (GB/s) B/ns
+        self.B_ext_interface_W: float = B_ext_W  # External memory interface write (GB/s) B/ns
         self.B_ext_internal: float = 500    # External memory internal bandwidth (GB/s) B/ns
         self.C_HBM_max: float = C_HBM_max * BYTES_TO_GB          # HBM capacity in B, 10GB
         # Inference parameters

@@ -7,15 +7,19 @@ from datetime import datetime
 
 def load_experiment_config(json_path):
     """
-    Load a single experiment configuration from the specified JSON file
+    Load experiment configurations from the specified JSON file
     """
     with open(json_path, 'r') as f:
         try:
-            config = json.load(f)
-            print(f"Loaded configuration from {json_path}")
-            return config
+            data = json.load(f)
+            if 'experiments' not in data:
+                # Handle single experiment case
+                return [data]
+            print(f"Loaded {len(data['experiments'])} configurations from {json_path}")
+            return data['experiments']
         except json.JSONDecodeError as e:
             raise ValueError(f"Error loading {json_path}: {e}")
+
 
 # experiments = [
 #     # scaled LLaMA-3-8B 8:1
@@ -76,7 +80,7 @@ def run_experiment(config):
     
     # Build command
     cmd = [
-        'python', 'simulator.py',
+        'python', 'simulation/simulator.py',
         '--para_num', str(config['para_num']),
         '--C_HBM_max', str(config['C_HBM_max']),
         '--filename', str(config['filename']),
@@ -114,10 +118,19 @@ def run_experiment(config):
 #         run_experiment(config)
 #         print("="*80)
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Run a single experiment from JSON config')
+    parser = argparse.ArgumentParser(description='Run experiments from JSON config')
     parser.add_argument('config_file', help='Path to JSON configuration file')
     args = parser.parse_args()
     
-    config = load_experiment_config(args.config_file)
-    run_experiment(config)
+    configs = load_experiment_config(args.config_file)
+    for idx, config in enumerate(configs, 1):
+        print(f"\nRunning experiment {idx}/{len(configs)}")
+        print("=" * 80)
+        run_experiment(config)
+        if idx < len(configs):
+            print(f"Cooling period before next experiment...")
+            time.sleep(30)  # Longer cooling period between experiments
+    
+    print("\nAll experiments completed!")
