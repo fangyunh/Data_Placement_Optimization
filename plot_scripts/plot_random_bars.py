@@ -98,116 +98,89 @@ if __name__ == "__main__":
     scaled = norm
     
     # --- 6) Plotting -----------------------------------
-    plt.figure(figsize=(10, 4), dpi=300)
+    plt.figure(figsize=(5.5, 5), dpi=300)
     ax = plt.gca()
 
-    # Define plotting order and filter out baseline and best
-    plot_order = [m for m in tar_methods if m.lower() not in ['best']]
-    n_methods = len(plot_order)  # Only count methods that will be bars
-    
-    # bar geometry
-    # n_methods = len(methods) - 1
-    bar_w = 0.1
-    gap = 0.01
-    group_gap = 0.2
-    total_w = n_methods * bar_w + (n_methods - 1) * gap
-    # x positions for each group
-    index = np.arange(len(randoms)) * (total_w + group_gap)
-    # offsets to center each bar in a group
-    offsets = (np.arange(n_methods) * (bar_w + gap)) - (total_w/2) + (bar_w/2)
-    
-    # choose colors automatically
+    # Define plotting order and filter out 'best' (we'll plot normalized to it)
+    plot_order = [m for m in tar_methods if m.lower() != 'best']
+    n_methods = len(plot_order)
+    n_groups = len(randoms)
+
+    # === New: geometry on a unit grid ===================
+    # Knobs you can tune:
+    BAR_W_FRAC = 0.03        # bar thinness as fraction of unit group spacing (smaller -> thinner)
+    GROUP_GAP_FRAC = 0.6    # gap between groups as fraction of unit spacing (smaller -> groups closer)
+
+    group_spacing = 1.0                              # centers at 0,1,2,...
+    group_w = (1.0 - GROUP_GAP_FRAC) * group_spacing # total width occupied by the bars in a group
+    bar_w = BAR_W_FRAC * group_spacing + 0.05            # absolute bar width (in data units of the unit grid)
+
+    # intra-group gap is computed so group width stays fixed regardless of bar_w
+    if n_methods > 1:
+        intra_gap = max(0.0, (group_w - n_methods * bar_w) / (n_methods - 1))
+    else:
+        intra_gap = 0.0
+
+    # group centers and bar offsets
+    index = np.arange(n_groups) * group_spacing
+    offsets = (-group_w / 2 + bar_w / 2) + np.arange(n_methods) * (bar_w + intra_gap)
+
+    # Freeze x-limits to the unit grid so autoscale can't fatten bars when gaps change
+    ax.set_xlim(index[0] - group_spacing / 2, index[-1] + group_spacing / 2)
+    ax.set_xticks(index)
+    ax.set_xticklabels(tar_random, fontsize=14)
+    ax.margins(x=0)  # no extra padding
+
+    # choose colors
     colors = {
-        'baseline': '#5a6d8c',  # Black for baseline
-        'reuse': '#baccd9',  # Blue
-        'page': '#5697c3',  # Orange
-        'sa': '#11659a',  # Green
-        'best': '#5a6d8c',  # Red
+        'baseline': '#5a6d8c',
+        'reuse': '#baccd9',
+        'page': '#5697c3',
+        'sa': '#11659a',
+        'best': '#5a6d8c',
     }
 
-    
-    # Plot bars for non-baseline methods
-    bar_idx = 0
-    for m in plot_order:
-        if m.lower() == ['best']:
-            continue
-        xs = index + offsets[bar_idx]
-        # Custom label formatting
-        label = display_names[m.lower()]
-            
+    # display names (make sure keys match exactly)
+    display_names = {
+        'baseline': 'Static',
+        'reuse': 'Reactive',
+        'sa': 'SA-Guided',
+        'page': 'Page-Granularity',
+        'best': 'Best Case',
+    }
+
+    # Plot bars (skip 'best')
+    for j, m in enumerate(plot_order):
+        xs = index + offsets[j]
+        label = display_names.get(m, m)
         ax.bar(
             xs,
-            scaled[m],
+            norm[m],           # already normalized to 'best'
             width=bar_w,
             label=label,
             color=colors[m.lower()],
             zorder=2
         )
-        # for xi, real_val in zip(xs, norm[m]):
-        #     # Position text slightly below the top of bar (0.02 offset)
-        #     y_pos = piecewise_scale(real_val, lower_dst=LOWER_DST) - 0.02
-        #     ax.text(xi, y_pos,
-        #            f"{real_val:.2f}", 
-        #            ha='center', 
-        #            va='top',  # Changed from 'bottom' to 'top'
-        #            fontsize=8,
-        #            fontweight='bold',
-        #            color='white')
-        bar_idx += 1
 
-    # Plot baseline as horizontal line
-    # Update baseline line to show its relative performance to best
-    # ax.axhline(y=piecewise_scale(norm['baseline'][0], lower_dst=LOWER_DST), 
-    #            color='black', 
-    #            linestyle='--', 
-    #            label=display_names['baseline'],
-    #            zorder=3,
-    #            linewidth=1.0)
-
-    # Plot best case line connecting normalized points
-    # best_ys = [piecewise_scale(y, lower_dst=LOWER_DST) for y in norm['best']]
-    # ax.plot(index, best_ys,
-    #         color='#126d82',
-    #         linestyle='-.',
-    #         label=display_names['best'],
-    #         zorder=3,
-    #         linewidth=1.0)
-    
-    # # Add scatter points on top
-    # ax.scatter(index, best_ys,
-    #           color='#126d82',
-    #           s=50,  # point size
-    #           zorder=4,  # ensure points are above line
-    #           marker='o')  # circular markers
-
-        
     # axes labels & ticks
-    ax.set_xlabel('Token Importance Variation', fontsize=18)
-    ax.set_ylabel('Normalized tokens/sec', fontsize=18)
-    ax.set_xticks(index)
-    ax.set_xticklabels(tar_random, fontsize=16)
-    
-    # custom y‐ticks back‐mapped to “real” normalized values
-    y_max = max(max(norm[m]) for m in methods) * 1.3
-    y_ticks = np.arange(0, 1.1, 0.1)  # Ticks from 0 to 1 in 0.1 steps
-    ax.set_yticks(y_ticks)
-    ax.set_yticklabels([f"{t:.1f}" for t in y_ticks])
+    ax.set_xlabel('Token Importance Variation', fontsize=16)
+    ax.set_ylabel('Normalized tokens/sec', fontsize=16)
+    ax.set_yticks(np.arange(0, 1.1, 0.1))
+    ax.set_yticklabels([f"{t:.1f}" for t in np.arange(0, 1.1, 0.1)], fontsize=12)
     ax.set_ylim(0, 1.0)
-    # ax.set_ylim(piecewise_scale(0, lower_dst=LOWER_DST),  # Start y-axis slightly below 1.0
-    #             piecewise_scale(y_max, lower_src=(0.0, 1.0), lower_dst=LOWER_DST))
-    
-    
-    ax.grid(axis='y', linestyle='--', alpha=0.7)
-    # ax.legend(loc='upper right', fontsize=12, frameon=True)
+
+    ax.grid(axis='y', linestyle='--', alpha=0.7, zorder=1)
+
+    # compact, one-row legend above plot
     ax.legend(
-        loc='upper center',  # Position at top center
-        bbox_to_anchor=(0.5, 1.15),  # Adjust vertical position above plot
-        ncol=5,  # Show all items in one row
-        fontsize=10,
-        frameon=True,
+        loc='upper center',
+        bbox_to_anchor=(0.5, 1.15),
+        ncol=min(5, n_methods),
+        fontsize=9.2,
+        frameon=False,
         borderaxespad=0.
     )
-    
+
     plt.tight_layout()
     plt.savefig("random.png", dpi=300, bbox_inches="tight")
     plt.show()

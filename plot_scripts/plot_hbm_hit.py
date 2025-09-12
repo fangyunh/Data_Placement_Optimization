@@ -5,10 +5,49 @@ import sys
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
-import numpy as np  # NEW: needed for compact x positions
+import numpy as np
 
-CSV_PATH = "data/hbm_hit_rate_60.csv"
+# =========================
+# CONFIG — Tweak these only
+# =========================
+CSV_PATH        = "data/hbm_hit_rate_60.csv"  # input CSV path
+OUTFILE_PNG     = "hbm_hit_rate.png"          # output image
 
+# Geometry knobs (independent):
+CENTER_SPACING  = 0.20     # distance between bar centers (smaller => bars closer)
+BAR_WIDTH_FRAC  = 0.30     # bar width as a fraction of CENTER_SPACING (0..1)
+BAR_WIDTH_ABS   = 0.08    # absolute bar width in data units; overrides BAR_WIDTH_FRAC if not None
+SIDE_PAD_FRAC   = 0.1    # small padding on left/right sides as fraction of CENTER_SPACING
+
+# Figure size:
+FIG_W           = 3.2      # inches
+FIG_H           = 3      # inches
+
+# Labels and legend:
+SHOW_PERCENT_LABELS = True
+PERCENT_FONT_SIZE   = 6
+LEGEND_MODE         = "top"  # "right", "top", or "none"
+LEGEND_FONT_SIZE    = 8
+
+# Aesthetics:
+WEIGHT_FACE   = "#d9e6f2"
+WEIGHT_HATCH  = "///"
+EDGE_COLOR    = "black"
+
+plt.rcParams.update({
+    "figure.dpi": 300,
+    "savefig.dpi": 300,
+    "font.family": "DejaVu Serif",
+    "font.size": 8,
+    "axes.labelsize": 9,
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
+    "pdf.fonttype": 42,
+    "ps.fonttype": 42,
+    "axes.xmargin": 0.01,
+})
+
+# Ordering and colors
 PREFERRED_ORDER = ["baseline", "reuse", "lookahead", "page", "sa", "best"]
 
 METHOD_COLORS = {
@@ -29,23 +68,10 @@ display_names = {
     'lookahead': 'Lookahead Scheduling',
 }
 
-WEIGHT_FACE = "#d9e6f2"
-WEIGHT_HATCH = "///"
-EDGE_COLOR = "black"
 
-plt.rcParams.update({
-    "figure.dpi": 300,
-    "savefig.dpi": 300,
-    "font.family": "DejaVu Serif",
-    "font.size": 8,
-    "axes.labelsize": 9,
-    "xtick.labelsize": 8,
-    "ytick.labelsize": 8,
-    "pdf.fonttype": 42,
-    "ps.fonttype": 42,
-    "axes.xmargin": 0.01,  # NEW: reduce default side padding
-})
-
+# =========================
+# Helpers
+# =========================
 def _to_percent_series(s: pd.Series) -> pd.Series:
     s = pd.to_numeric(s, errors="coerce")
     if s.dropna().max() <= 1.5:
@@ -68,6 +94,8 @@ def load_and_prepare(csv_path: str) -> pd.DataFrame:
         "weight_ratio": _to_percent_series(df[wcol]),
     })
     out["method_key"] = out["method"].str.lower()
+
+    # Keep only preferred methods in the requested order
     order_map = {m: i for i, m in enumerate(PREFERRED_ORDER)}
     out["order_key"] = out["method_key"].map(order_map)
     out = (out.dropna(subset=["order_key"])
@@ -76,25 +104,23 @@ def load_and_prepare(csv_path: str) -> pd.DataFrame:
               .reset_index(drop=True))
     return out
 
-def plot_hbm(df: pd.DataFrame, outfile_png: str = "hbm_hit_rate.png"):
-    # ---------- Figure width heuristic (kept) ----------
-    legend_labels = ["model weight ratio"]
-    legend_fontsize = 7
-    avg_char_width_in = legend_fontsize * 0.6 / 72.0
-    text_inches = sum(len(lbl) for lbl in legend_labels) * avg_char_width_in
-    handle_gap_inches = 0.40 * len(legend_labels)
-    fig_w = max(3.0, text_inches + handle_gap_inches)
-    # ---------------------------------------------------
 
-    fig, ax = plt.subplots(figsize=(fig_w, 1.6))
+# =========================
+# Plot
+# =========================
+def plot_hbm(df: pd.DataFrame, outfile_png: str = OUTFILE_PNG):
+    fig, ax = plt.subplots(figsize=(FIG_W, FIG_H))
 
-    # ---- NEW: compact spacing between bar centers ----
-    BAR_SPACING = 0.3          # < 1.0 packs bars closer than default
-    BAR_WIDTH   = 0.18
-    x = np.arange(len(df)) * BAR_SPACING
-    bar_w = BAR_SPACING * 0.85  # wide bars relative to spacing
-    # --------------------------------------------------
+    # --- Geometry: place bars on a unit-like grid controlled by CENTER_SPACING
+    x = np.arange(len(df)) * float(CENTER_SPACING)
 
+    if BAR_WIDTH_ABS is not None:
+        bar_width = float(BAR_WIDTH_ABS)
+    else:
+        bar_width = float(BAR_WIDTH_FRAC) * float(CENTER_SPACING)
+    bar_width = max(1e-6, bar_width)  # avoid zero/negative widths
+
+    # Split bars into hatched "weight" portion + remainder of HBM hit rate
     clipped = False
     weight_portion, remainder_portion = [], []
     for hr, wr in zip(df["hbm_hit_rate"].values, df["weight_ratio"].values):
@@ -104,62 +130,86 @@ def plot_hbm(df: pd.DataFrame, outfile_png: str = "hbm_hit_rate.png"):
         weight_portion.append(w)
         remainder_portion.append(hr - w)
 
-    for i, (m_key, w, r) in enumerate(zip(df["method_key"], weight_portion, remainder_portion)):
+    for xi, m_key, w, r in zip(x, df["method_key"], weight_portion, remainder_portion):
         base_color = METHOD_COLORS.get(m_key, "#9e9e9e")
-        ax.bar(x[i], w, width=BAR_WIDTH, color=WEIGHT_FACE, edgecolor=EDGE_COLOR,
+        ax.bar(xi, w, width=bar_width, color=WEIGHT_FACE, edgecolor=EDGE_COLOR,
                hatch=WEIGHT_HATCH, linewidth=0.6, zorder=2)
-        ax.bar(x[i], r, bottom=w, width=BAR_WIDTH, color=base_color, edgecolor=EDGE_COLOR,
+        ax.bar(xi, r, bottom=w, width=bar_width, color=base_color, edgecolor=EDGE_COLOR,
                linewidth=0.6, zorder=2)
-        ax.text(x[i], w + r + 0.8, f"{w + r:.1f}%", ha="center", va="bottom", fontsize=5)
+        if SHOW_PERCENT_LABELS:
+            ax.text(xi, w + r + 0.8, f"{w + r:.1f}%", ha="center", va="bottom",
+                    fontsize=PERCENT_FONT_SIZE)
 
-    # Modified method labels (kept)
+    # X tick labels (two-line where applicable)
     method_labels = []
     for k in df["method_key"]:
         name = display_names.get(k, k.capitalize())
         if ' ' in name:
-            words = name.split(' ', 1)
-            name = f"{words[0]}\n{words[1]}"
+            a, b = name.split(' ', 1)
+            name = f"{a}\n{b}"
         method_labels.append(name)
 
     ax.set_xticks(list(x))
-    ax.set_xticklabels(method_labels, rotation=0, fontsize=5, ha='center', va='top')
-    ax.set_ylabel("HBM hit rate (%)", fontsize=9)
+    ax.set_xticklabels(method_labels, rotation=0, fontsize=7, ha='center', va='top')
 
+    # Y axis
     ymax = max(100.0, (df["hbm_hit_rate"].max() + 6))
     ax.set_ylim(0, min(100.0, ymax) if df["hbm_hit_rate"].max() <= 100 else ymax)
+    ax.set_ylabel("HBM hit rate (%)", fontsize=9)
 
-    # ax.grid(axis="y", linestyle=":", linewidth=0.8)
+    # Cosmetics
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
-    # NEW: tighten side limits so bars sit snugly inside the frame
+    # Tight x-limits so bars sit snugly inside the frame; small side padding
     if len(x) > 0:
-        pad = max(0.005, 0.5 * (BAR_SPACING - BAR_WIDTH))
-        ax.set_xlim(x[0] - BAR_WIDTH/2 - pad, x[-1] + BAR_WIDTH/2 + pad)
-    ax.margins(x=0.01)
+        pad = max(0.0, SIDE_PAD_FRAC * float(CENTER_SPACING))
+        ax.set_xlim(x[0] - bar_width/2 - pad, x[-1] + bar_width/2 + pad)
+    ax.margins(x=0)
 
-    # Legend (kept to only weight handle)
-    weight_handle = Patch(facecolor=WEIGHT_FACE, edgecolor=EDGE_COLOR, hatch=WEIGHT_HATCH,
-                          label="model weight ratio")
-    ax.legend(handles=[weight_handle],
-              loc="upper center",
-              frameon=False,
-              bbox_to_anchor=(0.5, 1.12),
-              ncol=1,
-              fontsize=legend_fontsize,
-              handlelength=1.4,
-              borderaxespad=0.2)
+    # Legend — only the weight hatch handle, placed per LEGEND_MODE
+    if LEGEND_MODE.lower() != "none":
+        weight_handle = Patch(facecolor=WEIGHT_FACE, edgecolor=EDGE_COLOR,
+                              hatch=WEIGHT_HATCH, label="model weight ratio")
+        if LEGEND_MODE.lower() == "right":
+            ax.legend(
+                handles=[weight_handle],
+                loc="center left",
+                bbox_to_anchor=(1.02, 0.5),  # just outside the axes on the right
+                frameon=False,
+                ncol=1,
+                fontsize=LEGEND_FONT_SIZE,
+                handlelength=1.4,
+                borderaxespad=0.0,
+            )
+        elif LEGEND_MODE.lower() == "top":
+            ax.legend(
+                handles=[weight_handle],
+                loc="upper center",
+                bbox_to_anchor=(0.5, 1.10),
+                frameon=False,
+                ncol=1,
+                fontsize=LEGEND_FONT_SIZE,
+                handlelength=1.4,
+                borderaxespad=0.2,
+            )
 
     fig.tight_layout(pad=0.6)
-    plt.subplots_adjust(bottom=0.22)
+    # bbox_inches="tight" ensures right-side legend (if any) is fully included
     fig.savefig(outfile_png, bbox_inches="tight")
 
     if clipped:
-        print("[WARN] Some rows had Model weight ratio > HBM hit rate; clipped to bar height.", file=sys.stderr)
+        print("[WARN] Some rows had Model weight ratio > HBM hit rate; clipped to bar height.",
+              file=sys.stderr)
 
+
+# =========================
+# Main
+# =========================
 if __name__ == "__main__":
     df = load_and_prepare(CSV_PATH)
     if df.empty:
-        raise SystemExit("No recognized methods found. Ensure 'methods' are among: "
-                         + ", ".join(PREFERRED_ORDER))
-    plot_hbm(df, outfile_png="hbm_hit_rate.png")
+        raise SystemExit(
+            "No recognized methods found. Ensure 'methods' are among: " + ", ".join(PREFERRED_ORDER)
+        )
+    plot_hbm(df, outfile_png=OUTFILE_PNG)

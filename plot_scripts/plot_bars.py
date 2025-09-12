@@ -44,10 +44,10 @@ if __name__ == "__main__":
 
     # Add display name mapping
     display_names = {
-        'baseline': 'Static Placement',
-        'reuse': 'Reactive Scheduling',
-        'sa': 'SA-Guided Scheduling',
-        'page': 'Page Granularity Scheduling',
+        'baseline': 'Static',
+        'reuse': 'Reactive',
+        'sa': 'SA-Guided',
+        'page': 'Page-Granularity',
         'best': 'Unlimited HBM',
     }
 
