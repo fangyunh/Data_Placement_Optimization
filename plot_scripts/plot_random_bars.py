@@ -176,7 +176,7 @@ if __name__ == "__main__":
         loc='upper center',
         bbox_to_anchor=(0.5, 1.15),
         ncol=min(5, n_methods),
-        fontsize=9.2,
+        fontsize=10,
         frameon=False,
         borderaxespad=0.
     )
