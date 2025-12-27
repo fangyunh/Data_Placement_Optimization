@@ -1,0 +1,32 @@
+{
+    "experiments": [
+        {
+            "setting": "Scaled Mixtral unlimited HBM",
+            "para_num": 46.7,
+            "C_HBM_max": 90,
+            "B_ext_R": 450,
+            "B_ext_W": 450,
+            "inclusive": true,
+            "best": false,
+            "filename": "../data/gov_report/mixtral_gov_16_4096_8192_60.csv",
+            "sparsity": 0.60,
+            "init_class": "HBMInit",
+            "mig_classes": ["NoMigration"],
+            "plc_classes": ["PreferHBM"]
+        },
+        {
+            "setting": "Scaled Mixtral page",
+            "para_num": 46.7,
+            "C_HBM_max": 90,
+            "B_ext_R": 450,
+            "B_ext_W": 450,
+            "inclusive": true,
+            "best": false,
+            "filename": "../data/gov_report/mixtral_gov_16_4096_8192_60.csv",
+            "sparsity": 0.60,
+            "init_class": "HBMInit",
+            "mig_classes": ["JITMigration"],
+            "plc_classes": ["PreferHBM"]
+        }
+    ]
+}
