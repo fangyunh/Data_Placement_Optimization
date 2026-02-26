@@ -1,4 +1,3 @@
-# run_experiments.py (new file)
 import subprocess
 import time
 import argparse
@@ -20,67 +19,17 @@ def load_experiment_config(json_path):
         except json.JSONDecodeError as e:
             raise ValueError(f"Error loading {json_path}: {e}")
 
-
-# experiments = [
-#     # scaled LLaMA-3-8B 8:1
-#     {
-#         'para_num': 8,
-#         'C_HBM_max': 23,
-#         'inclusive': True,
-#         'best': True,
-#         'filename': 'data/narativeqa/random_low_0.60.csv',
-#         'sparsity': 0.60,
-#         'init_class': 'HBMInit',
-#         'mig_classes': ['NoMigration'],
-#         'plc_classes': ['PreferHBM']
-#     },
-#     {
-#         'para_num': 8,
-#         'C_HBM_max': 23,
-#         'inclusive': True,
-#         'best': False,
-#         'filename': 'data/narativeqa/random_low_0.60.csv',
-#         'sparsity': 0.60,
-#         'init_class': 'HBMInit',
-#         'mig_classes': ['NoMigration'],
-#         'plc_classes': ['PreferHBM']
-#     },
-#     {
-#         'para_num': 8,
-#         'C_HBM_max': 23,
-#         'inclusive': True,
-#         'best': False,
-#         'filename': 'data/narativeqa/random_low_0.60.csv',
-#         'sparsity': 0.60,
-#         'init_class': 'TokenLevelBestRatioInit',
-#         'mig_classes': ['NormalMigration'],
-#         'plc_classes': ['PreferHBM']
-#     },
-#     {
-#         'para_num': 8,
-#         'C_HBM_max': 23,
-#         'inclusive': True,
-#         'best': False,
-#         'filename': 'data/narativeqa/random_low_0.60.csv',
-#         'sparsity': 0.60,
-#         'init_class': 'HBMInitPaged',
-#         'mig_classes': ['PageMigration'],
-#         'plc_classes': ['PreferHBMPaged']
-#     },
-    
-# ]
-
 def run_experiment(config):
     # Generate filename with timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Removed 'sparsity' from log_name since it is now inherent in the trace data
     log_name = (f"{config['para_num']}B_"
                 f"{config['C_HBM_max']}GB_"
-                f"{config['sparsity']}_"
                 f"{timestamp}.txt")
     
     # Build command
     cmd = [
-        'python', 'simulation/simulator.py',
+        'python', 'simulator.py', # Assuming simulator.py is in the current directory or Python path
         '--para_num', str(config['para_num']),
         '--C_HBM_max', str(config['C_HBM_max']),
         '--filename', str(config['filename']),
@@ -91,15 +40,28 @@ def run_experiment(config):
         '--inclusive', str(config['inclusive']),
         '--log_file', log_name
     ]
+
+    # Add bandwidth parameters if they exist in config
+    if 'B_ext_R' in config:
+        cmd.extend(['--B_ext_R', str(config['B_ext_R'])])
+    if 'B_ext_W' in config:
+        cmd.extend(['--B_ext_W', str(config['B_ext_W'])])
     
     # Run in separate process
     # Print experiment info to terminal
     print(f"\nStarting experiment ({timestamp}):")
     print(f"Model: {config['para_num']}B, HBM: {config['C_HBM_max']}GB")
-    print(f"Sparsity: {config['sparsity']}, File: {config['filename']}")
+    print(f"File: {config['filename']}")
     print(f"Strategy: {config['init_class']} + {'+'.join(config['mig_classes'])} + {'+'.join(config['plc_classes'])}")
+    if 'B_ext_R' in config:
+        print(f"External Read BW: {config['B_ext_R']} GB/s")
+    if 'B_ext_W' in config:
+        print(f"External Write BW: {config['B_ext_W']} GB/s")
     print(f"Log file: {log_name}\n")
-    process = subprocess.Popen(cmd, stdout=None, stderr=subprocess.PIPE)
+    
+    # The original script used 'simulation/simulator.py', adjusting path here for common use
+    # If your simulator.py is in a subdirectory, adjust the path in the cmd list above.
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
     
     # Handle results
@@ -112,11 +74,6 @@ def run_experiment(config):
     
     # Add cooling period between experiments
     time.sleep(10)
-
-# if __name__ == "__main__":
-#     for config in experiments:
-#         run_experiment(config)
-#         print("="*80)
 
 
 if __name__ == "__main__":

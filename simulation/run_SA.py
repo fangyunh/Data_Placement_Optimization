@@ -1,67 +1,85 @@
 import subprocess
 import time
 from datetime import datetime
+import json
+import argparse
+import sys
 
-# scaled LLaMA-3-8B
+# --- Configurations to tune ---
+# Note: C_HBM_max should be small enough to force competition for HBM
 experiments = [
-    # {
-    #     'para_num': 0.0078125,
-    #     'C_HBM_max': 0.0234375,
-    #     'inclusive': True,
-    #     'best': False,
-    #     'filename': './data/qasper/quasper_01_40.csv',
-    #     'sparsity': 0.4,
-    # },
-    # Add more experiment configurations as needed
-
     {
-        'para_num': 8,
-        'C_HBM_max': 25,
-        'B_ext_R': 300,
-        'B_ext_W': 300,
+        'setting': "Mixtral Adaptive",
+        'para_num': 46.7,      # Mixtral 8x7B equivalent unique params
+        'C_HBM_max': 90,       # 10 GB HBM to force cache competition
+        'B_ext_R': 450,        # Standard BW
+        'B_ext_W': 450,
+        'filename': '../data/gov_report/mixtral_gov_4_4096_8192_60.csv', # Placeholder trace
         'inclusive': True,
         'best': False,
-        'filename': 'data/narativeqa/narativeqa_60.csv',
-        'sparsity': 0.60,
+        'n_splits': 4,
+        'max_iter': 40,
+        'initial_window': 12
     },
 ]
 
 def run_experiment(config):
     # Generate filename with timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_name = (f"SA_{config['para_num']}B_"
+    log_name = (f"SA_ADAPTIVE_"
                 f"{config['C_HBM_max']}GB_"
-                f"{config['sparsity']}_"
+                f"{config['B_ext_R']}R_"
                 f"{timestamp}.txt")
     
-    # Build command
+    # Build command for the adaptive_tuner.py script
     cmd = [
-        'python', 'simulation/SA_simulation.py',
+        'python', 'SA_simulation.py',
         '--para_num', str(config['para_num']),
         '--C_HBM_max', str(config['C_HBM_max']),
+        '--B_ext_R', str(config['B_ext_R']),
+        '--B_ext_W', str(config['B_ext_W']),
         '--filename', str(config['filename']),
         '--best', str(config['best']),
         '--inclusive', str(config['inclusive']),
-        '--log_file', log_name
+        '--log_file', log_name,
+        '--n_splits', str(config['n_splits']),
+        '--max_iter', str(config['max_iter']),
+        '--initial_window', str(config['initial_window'])
     ]
     
     # Run in separate process
-    print(f"Starting SA experiment: {log_name}")
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = process.communicate()
+    print(f"\nStarting SA Tuning Experiment: {config['setting']}")
+    print(f"Log file: {log_name}")
+    print(f"trace file: {config['filename']}\n")
     
-    # Handle results
-    if process.returncode == 0:
-        print(f"Completed successfully: {log_name}")
-    else:
+    # Use subprocess.run to capture the output correctly
+    try:
+        process = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        print(f"Completed successfully. Output logged to {log_name}.")
+    except subprocess.CalledProcessError as e:
         print(f"Failed: {log_name}")
+        error_message = f"Process failed with return code {e.returncode}.\n"
+        # Return code -9 means SIGKILL (OOM Killer usually sends this)
+        if e.returncode == -9:
+            error_message += "CRITICAL: Process was KILLED (likely Out of Memory). Reduce n_splits.\n"
+        
+        print(f"--- Stdout ---\n{e.stdout}")
+        print(f"--- Stderr ---\n{e.stderr}")
+        print(f"--- Diagnosis ---\n{error_message}")
         with open(f"ERROR_{log_name}", 'w') as f:
-            f.write(stderr.decode())
+            f.write(f"Stdout:\n{e.stdout}\n\nStderr:\n{e.stderr}")
     
-    # Add cooling period between experiments
+    # Add cooling period
     time.sleep(10)
 
+
 if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        print("Note: Ignoring command-line arguments and using hardcoded 'experiments' list.")
+        
     for config in experiments:
         run_experiment(config)
         print("="*80)
+        time.sleep(30) # Longer break between major experiments
+
+    print("All adaptive tuning experiments completed!")

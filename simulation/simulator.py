@@ -1,4 +1,3 @@
-
 import math
 import random
 from abc import ABC, abstractmethod
@@ -15,392 +14,373 @@ from tqdm.auto import tqdm
 
 BYTES_TO_GB = 1024**3
 
-
-# Add this new class at the beginning of the file
 class TraceReader:
+    """
+    Reads and indexes the 5-column MoE trace file.
+    Format: query_num_in_batch,absolute_token_index,layer_num,used_expert_indices,token_indices_by_attention
+    """
     def __init__(self, filename):
         self.filename = filename
         self.file = None
-        self.reader = None
         self._header = None
         self.first_token = None
         self.last_token = None
+        self.batch_size = 0
         self.line_positions = {}
         self.token_cache = {}
-        # prefetch how many tokens
-        self.cache_window = 128
+        self.cache_window = 16 
         self.current_window_start = None
+        
+        print("Building trace index...")
         self._build_index()
+        print(f"Trace index built. Batch Size: {self.batch_size}, Tokens: {self.first_token} to {self.last_token}")
     
-
     def _update_cache(self, n):
-        """Update cache with tokens from n to n+cache_window"""
-        # Clear existing cache
         self.token_cache.clear()
         self.current_window_start = n
         
-        # Initialize cache structure for the window
-        for token in range(n, min(n + self.cache_window, self.last_token + 1)):
-            self.token_cache[token] = {}
+        for token_idx in range(n, min(n + self.cache_window, self.last_token + 1)):
+            self.token_cache[token_idx] = {}
 
-        # Seek to the start position
-        if n in self.line_positions:
-            self.file.seek(self.line_positions[n])
-        else:
-            return  # Invalid token number
+        if n not in self.line_positions:
+            return
 
-        # Read and cache all layers for each token in window
+        self.file.seek(self.line_positions[n])
+
         while True:
+            line_pos = self.file.tell()
             line = self.file.readline()
-            if not line:
-                break
+            if not line: break 
 
-            reader = csv.reader(io.StringIO(line))
-            parts = next(reader)
-            curr_n = int(parts[0])
-            
-            # Break if we've gone beyond our window
-            if curr_n >= n + self.cache_window:
-                break
+            try:
+                parts = next(csv.reader(io.StringIO(line)))
+                if not parts: continue
                 
-            # Skip if token is before our window
-            if curr_n < n:
+                query_num = int(parts[0])
+                curr_n = int(parts[1])
+                curr_l = int(parts[2])
+                
+                if curr_n < n: continue 
+                if curr_n >= n + self.cache_window:
+                    self.file.seek(line_pos)
+                    break
+                
+                experts = set(ast.literal_eval(parts[3]))
+                kv_read = set(ast.literal_eval(parts[4]))
+                
+                if curr_l not in self.token_cache[curr_n]:
+                    self.token_cache[curr_n][curr_l] = {
+                        'experts': set(),
+                        'kv_read_per_query': {} 
+                    }
+                
+                self.token_cache[curr_n][curr_l]['experts'].update(experts)
+                self.token_cache[curr_n][curr_l]['kv_read_per_query'][query_num] = kv_read
+                
+            except Exception as e:
                 continue
-
-            curr_l = int(parts[1])
-            read_kv_str = parts[2]
-            read_kv = ast.literal_eval(read_kv_str)
-            
-            # Store in cache
-            self.token_cache[curr_n][curr_l] = read_kv
     
     def _is_in_cache(self, n, l):
-        """Check if token n and layer l are in cache"""
         return (self.current_window_start is not None and 
                 self.current_window_start <= n < self.current_window_start + self.cache_window and
                 n in self.token_cache and 
                 l in self.token_cache[n])
-
-
     
     def _build_index(self):
-        """Build an index of file positions for each n value"""
+        max_query_num = 0
         with open(self.filename, 'r') as f:
-            # Read and store the header
             self._header = f.readline().strip()
-            
-            # Get position at the start of the first data line
             pos = f.tell()
             line = f.readline()
-            if not line:  # Handle empty file after header
+            if not line: return
+            
+            try:
+                parts = next(csv.reader(io.StringIO(line)))
+                n = int(parts[1])
+                self.first_token = n
+                self.line_positions[n] = pos
+                current_n = n
+                max_query_num = max(max_query_num, int(parts[0]))
+            except Exception:
                 return
-            
-            # Parse first data line
-            parts = line.strip().split(',')
-            n = int(parts[0])
-            self.first_token = n
-            self.line_positions[n] = pos  # Position before reading the line
-            current_n = n
-            
-            # Process remaining lines
+
             while True:
-                pos = f.tell()  # Position before reading the next line
+                pos = f.tell()
                 line = f.readline()
-                if not line:  # End of file
-                    break
-                parts = line.strip().split(',')
-                n = int(parts[0])
-                if n != current_n:
-                    self.line_positions[n] = pos  # Record position where new n starts
-                    current_n = n
+                if not line: break
+                
+                try:
+                    parts = next(csv.reader(io.StringIO(line)))
+                    if not parts: continue
+                    n = int(parts[1])
+                    max_query_num = max(max_query_num, int(parts[0]))
+                    if n != current_n:
+                        self.line_positions[n] = pos
+                        current_n = n
+                except Exception:
+                    continue 
             
             self.last_token = current_n
+            self.batch_size = max_query_num + 1 
     
     def __enter__(self):
-        """Context manager entry"""
         self.file = open(self.filename, 'r')
-        self.reader = csv.reader(self.file)
-        self._header = next(self.reader)  # Skip and store header
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit"""
         self.token_cache.clear()
         if self.file:
             self.file.close()
     
-    def get_read_tokens(self, n, l):
+    def _get_step_data(self, n, l):
         if not self._is_in_cache(n, l):
             self._update_cache(n)
         
-        # Return from cache if available
         if self._is_in_cache(n, l):
             return self.token_cache[n][l]
-            
-        return []  # Return empty list if not found
+        return {'experts': set(), 'kv_read_per_query': {}}
 
+    def get_active_experts(self, n, l) -> set:
+        return self._get_step_data(n, l)['experts']
+        
+    def get_all_kv_reads_by_query(self, n, l) -> dict:
+        return self._get_step_data(n, l)['kv_read_per_query']
 
 class MemorySimulator(ABC):
     def __init__(self, config: ModelConfig, status: MemStatus,
                  placement: BaseStrategy, migration: BaseDataMigration, 
-                 best: bool = False):
+                 best: bool = False, log_filename: str = None):
         self.cfg = config
         self.plc = placement
         self.mig = migration
         self.status = status
-        # Always read in maximum bandwidth
         self.best = best
         self.total_time = 0.0
         self.step_details = []
-        self.total_alpha = 0.0  # Add this line to track sum of alphas
+        self.total_alpha = 0.0
         self.total_model_weight_ratio = 0.0
         self.step_count = 0
         self.model_weight_ratio = 0.0 
+        self.log_filename = log_filename
 
     def calculate_step_time(self, n: int, l: int, 
                        alpha, beta: float, 
                        hbm_MR: float, hbm_MW: float,
                        ext_MR: float, ext_MW: float):
-        """Calculate time consumption for one step"""
-        # Calculate data sizes
         D_R, D_W = self.status.calculate_data_sizes(n, l)
-        # should modify the way to calculate time, inclusive / exclusive
-        # represents the ratio of KV cache.
-        # Calculate HBM time
-
-        # Calculate model weight ratio in total read
-        self.model_weight_ratio = self.status.model_weight_read_per_step / D_R
-
+        
+        if D_R > 0:
+            kv_reads_all_queries = self.status.trace.get_all_kv_reads_by_query(n, l)
+            total_kv_read_count = sum(len(tokens) for tokens in kv_reads_all_queries.values())
+            total_kv_read = total_kv_read_count * self.status.single_KV_cache_size
+            actual_model_weight = D_R - total_kv_read
+            self.model_weight_ratio = actual_model_weight / D_R
+        else:
+            self.model_weight_ratio = 0.0
 
         if self.best:
-            alpha = min(self.cfg.C_HBM_max / D_R, self.cfg.best_alpha)
+            alpha = min(self.cfg.C_HBM_max / D_R, self.cfg.best_alpha) if D_R > 0 else 0
+            beta = 0.0 
+            hbm_MR = 0.0
+            hbm_MW = 0.0
+            ext_MR = 0.0
+            ext_MW = 0.0
+            D_W = 0.0
 
         HBM_read = alpha * D_R
         HBM_write = beta * D_W
         HBM_migration = hbm_MR + hbm_MW
-        T_HBM = (HBM_read + HBM_write + HBM_migration) / self.cfg.B_HBM  # in ns
+        T_HBM = (HBM_read + HBM_write + HBM_migration) / self.cfg.B_HBM if self.cfg.B_HBM > 0 else float('inf')
         
+        ext_read_bw = min(self.cfg.B_ext_interface_R, self.cfg.B_ext_internal)
+        ext_read = ((1 - alpha) * D_R + ext_MR) / ext_read_bw if ext_read_bw > 0 else float('inf')
         
-        # New external read calculation using interface vs internal minimum
-        ext_read = ((1 - alpha) * D_R + ext_MR) / min(self.cfg.B_ext_interface_R, 
-                                        self.cfg.B_ext_internal)
+        write_migration = (ext_MW + D_W) / self.cfg.B_ext_interface_W if self.cfg.B_ext_interface_W > 0 else 0
         
-        # when internal bw larger than interface read
-        # ext_write_large = (D_W) / min(self.cfg.B_ext_interface_W, self.cfg.B_ext_internal - self.cfg.B_ext_interface_R)
-        # when internal bw smaller than interface read
-        # ext_write_small = (D_W) / self.cfg.B_ext_internal
-
-        # ext_write_migration = 0
-        # if self.cfg.B_ext_interface_R <= self.cfg.B_ext_internal:
-        #     ext_write_migration = max(ext_read, ext_write_large)
-        # else:
-        #     ext_write_migration = ext_read + ext_write_small
+        internal_bw_contention = (ext_MW + ext_MR + D_W + (1 - alpha) * D_R) / self.cfg.B_ext_internal if self.cfg.B_ext_internal > 0 else 0
         
-        # New write + migration calculation
-        write_migration = 0.0
-        internal_migration = 0.0
-        read_migration = 0.0
-
-        write_migration = (ext_MW + D_W) / self.cfg.B_ext_interface_W if self.cfg.B_ext_interface_R > 0 else 0 # delete beta_ext * D_W because can be covered in the read stage.
-        internal_migration = (ext_MW + ext_MR + D_W) / self.cfg.B_ext_internal if self.cfg.B_ext_internal > 0 else 0
-        read_migration = ext_MR / self.cfg.B_ext_interface_R if self.cfg.B_ext_interface_R > 0 else 0
-        
-        ext_write_migration = max(write_migration, read_migration, internal_migration)
-        
-        T_ext = ext_write_migration + ext_read  # in ns
+        T_ext = max(ext_read, write_migration, internal_bw_contention)
         
         return max(T_HBM, T_ext)
     
-    def simulate(self):
-        """
-        Run full simulation
-        Args:
-            alpha_strategy: Function(n,l,s) -> alpha
-            beta_strategy: Function(n,l,s) -> beta
-            migration_strategy: Function(n,l,s) -> (D_MR, D_MW)
-        """
+    def simulate(self, stride: int = 10):
         self.total_time = 0.0
         self.step_details = []
-        self.total_alpha = 0.0  # Reset alpha sum
-        self.step_count = 0     # Reset step count
+        self.total_alpha = 0.0
+        self.step_count = 0
         self.total_model_weight_ratio = 0.0
+
+        if self.log_filename:
+            log_handle = open(self.log_filename, 'a')
+            log_handle.write(f"\n--- Simulation Start (N_pre={self.cfg.N_pre}) ---\n")
+            log_handle.write("n,l,Time_ns,Alpha,Beta,DR_GB,DW_GB,HBM_Rem_GB,hbm_MW_GB,ext_MR_GB\n")
+        else:
+            log_handle = None
 
         total_steps = self.cfg.N * self.cfg.L
         
-        # Create progress bar for terminal
         progress_bar = tqdm(
             total=total_steps,
             desc="Simulating",
             unit= "step",
-            dynamic_ncols=True,       # auto-resize to terminal width
-            file=sys.__stdout__,  # Use system stdout for terminal
+            dynamic_ncols=True,
+            file=sys.__stdout__,
             leave=False,
         )
 
         for n in range(self.cfg.N_pre, self.cfg.N_pre + self.cfg.N):
             for l in range(self.cfg.L):
-                alpha = self.plc.alpha_strategy(n, l)
+                
                 beta = self.plc.beta_strategy(n, l)
-                migration_data = self.mig.migration_strategy(n, l)
 
-                # Track alpha values
-                self.total_alpha += alpha
-                self.total_model_weight_ratio += self.model_weight_ratio
-                self.step_count += 1
+                if (n - self.cfg.N_pre) % stride == 0:
+                    alpha = self.plc.alpha_strategy(n, l)
+                    migration_data = self.mig.migration_strategy(n, l)
                 
-                # Calculate step time
-                step_time = self.calculate_step_time(n, l, alpha, beta, 
-                                                        migration_data[0], migration_data[1],
-                                                        migration_data[2], migration_data[3])
-                self.total_time += step_time
+                    hbm_MR, hbm_MW, ext_MR, ext_MW = migration_data
+
+                    self.total_alpha += alpha * stride
+                    self.total_model_weight_ratio += self.model_weight_ratio * stride
+                    self.step_count += stride
                 
-                # Record step details
-                self.step_details.append({
-                    'n': n,
-                    'l': l,
-                    'time': step_time,
-                    'alpha': alpha,
-                    'beta': beta
-                })
-                # Update progress bar
+                    step_time = self.calculate_step_time(n, l, alpha, beta, 
+                                                        hbm_MR, hbm_MW,
+                                                        ext_MR, ext_MW)
+                    self.total_time += step_time * stride
+                
+                    if log_handle:
+                        D_R, D_W = self.status.calculate_data_sizes(n, l)
+                        line = f"{n},{l},{step_time:.2f},{alpha:.4f},{beta:.4f},"
+                        line += f"{D_R/BYTES_TO_GB:.6f},{D_W/BYTES_TO_GB:.6f},"
+                        line += f"{self.status.hbm_capacity_remaining/BYTES_TO_GB:.6f},"
+                        line += f"{hbm_MW/BYTES_TO_GB:.6f},{ext_MR/BYTES_TO_GB:.6f}\n"
+                        log_handle.write(line)
+                
+                    self.step_details.append({
+                        'n': n,
+                        'l': l,
+                        'time': step_time,
+                        'alpha': alpha,
+                        'beta': beta
+                    })
                 progress_bar.update(1)
                 progress_bar.set_postfix(n=n, l=l, refresh=False)
+        
         progress_bar.close()
-        return self.total_time, self.total_alpha / self.step_count, self.total_model_weight_ratio / self.step_count
+        if log_handle: log_handle.close()
+        
+        avg_alpha = self.total_alpha / self.step_count if self.step_count > 0 else 0
+        avg_model_ratio = self.total_model_weight_ratio / self.step_count if self.step_count > 0 else 0
+        
+        return self.total_time, avg_alpha, avg_model_ratio
 
-# simulator.py (updated run_simulation function)
 def run_simulation(init_class: MemStatus, config_params: dict, 
-                  mig_classes: list, plc_classes: list):
-    """Run simulation with specified initialization class and config parameters"""
+                  mig_classes: list, plc_classes: list, log_filename: str = None):
     fn = config_params.get('filename', "trace.txt")
     inclusive = config_params.get('inclusive', False)
     best = config_params.get('best', False)
-    # First read to get token information
+
+    print(f"Reading trace file: {fn}")
     with TraceReader(fn) as trace_reader:
         N_pre_tk = trace_reader.first_token
         N_last_tk = trace_reader.last_token
+        
+        if N_pre_tk is None or N_last_tk is None:
+            print(f"Error: No data in trace file {fn}")
+            return
+            
         N_tk = N_last_tk - N_pre_tk + 1
+        batch_size = trace_reader.batch_size
 
-        # Create base config
-        config = ModelConfig(
-            N=N_tk,
-            N_pre=N_pre_tk,
-            para_num=config_params.get('para_num', 0.5),
-            C_HBM_max=config_params.get('C_HBM_max', 3),
-            B_ext_R=config_params.get('B_ext_R', 450),
-            B_ext_W=config_params.get('B_ext_W', 450)
-        )
+    config = Mixtral8x7BConfig(
+        N=N_tk,         
+        N_pre=N_pre_tk, 
+        para_num=config_params.get('para_num', 46.7), 
+        C_HBM_max=config_params.get('C_HBM_max', 100), 
+        B_ext_R=config_params.get('B_ext_R', 450),
+        B_ext_W=config_params.get('B_ext_W', 450),
+        batch_size=batch_size
+    )
 
-    # 🔥 Use passed strategy classes instead of hardcoded
     placement_classes = plc_classes
     migration_classes = mig_classes
-    # best simulation
-    # with TraceReader(fn) as trace_reader:
-    #     # Rest of the original simulation logic...
-    #     initial_state_temp = init_class(config, trace_reader, inclusive)
-    
-    #     best_mig = NoMigration(config, initial_state_temp)
-    #     best_plc = PreferHBM(config, initial_state_temp)
-    #     best_simulator = MemorySimulator(config, initial_state_temp, best_plc, best_mig, best=True)
-    #     upper_bound_time = best_simulator.simulate()
-        
-    #     print(f"Read trace file: {fn}")
-    #     print(f"Best Combination:")
-    #     print(f"Total simulation time: {upper_bound_time:.4f} ns, {upper_bound_time/1e9:.4f} seconds")
-    #     print(f"Average time per token: {upper_bound_time/initial_state_temp.cfg.N:.6f} ns")
-    #     print("-" * 50)
 
-    # 🔥 Use passed strategy classes in the loops
     for p_cls in placement_classes:
         for m_cls in migration_classes:
             with TraceReader(fn) as trace_reader:
-
                 test_initial_state = init_class(config, trace_reader, inclusive)
                 
                 mig_instance = m_cls(config, test_initial_state)
                 placement_instance = p_cls(config, test_initial_state)
                 
                 simulator = MemorySimulator(config, test_initial_state, 
-                                        placement_instance, mig_instance, best)
-                total_time, avg_hit_rate, avg_model_weight_ratio = simulator.simulate()
-                # avg_alpha = sum(step['alpha'] for step in simulator.step_details) / len(simulator.step_details)
+                                        placement_instance, mig_instance, best, log_filename)
                 
-                print(f"Combination: {p_cls.__name__} + {m_cls.__name__}")
+                total_time, avg_hit_rate, avg_model_weight_ratio = simulator.simulate(stride=100)
+                
+                print(f"\nCombination: {p_cls.__name__} + {m_cls.__name__}")
                 print(f"Internal bandwidth for read {config.B_ext_interface_R} GB/s, and write {config.B_ext_interface_W} GB/s")
-                print(f"Total time: {total_time:.8f} ns, {total_time/1e9:.8f} seconds, coarse upper bound: {best}")
-                #print(f"Avg alpha: {avg_alpha:.6f}")
-                print(f"Alpha:")
-                last_n = config.N_pre + config.N - 1
-                last_alpha = next(step['alpha'] for step in simulator.step_details
-                                if step['n'] == last_n and step['l'] == 31)
-                print(f"n={last_n}, alpha = {last_alpha:.8f}")
-                print(f"Average HBM hit rate: {avg_hit_rate:.4f}")
-                print(f"Average model weight ratio in HBM hits: {avg_model_weight_ratio:.4f}")
+                print(f"Total time: {total_time:.8f} ns, {total_time/1e9:.8f} seconds")
+                
+                if simulator.step_details:
+                    last_n = config.N_pre + config.N - 1
+                    last_l = config.L - 1
+                    last_alpha = next((step['alpha'] for step in reversed(simulator.step_details)
+                                     if step['n'] == last_n and step['l'] == last_l), 0.0)
+                    print(f"Alpha at n={last_n}, l={last_l}: {last_alpha:.8f}")
+                
+                print(f"Average HBM hit rate (Alpha): {avg_hit_rate:.4f}")
+                print(f"Average model weight ratio in total read: {avg_model_weight_ratio:.4f}")
                 print("-" * 30)
-
-                # test_initial_state.print_token_layer_status()
     
     return
 
 def str2bool(v):
-    """Convert string to boolean"""
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
+    if isinstance(v, bool): return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'): return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'): return False
+    else: raise argparse.ArgumentTypeError('Boolean value expected.')
 
-
-# simulator.py (add this at the end)
 if __name__ == "__main__":
     import argparse
     from argparse import Namespace
-    # Redirect output to log file
     import sys
 
     csv.field_size_limit(sys.maxsize)
-    # Mapping from string names to actual classes
+    
+    defined_classes = locals()
     CLASS_MAPPING = {
-        # Initialization classes
-        'HBMInit': HBMInit,
-        'TokenLevelBestRatioInit': TokenLevelBestRatioInit,
-        'HBMInitPaged': HBMInitPaged,
-        
-        # Migration classes
-        'NoMigration': NoMigration,
-        'LookAheadOneMigration': LookAheadOneMigration,
-        'NormalMigration': NormalMigration,
-        'PageMigration': PageMigration,
-        # Placement classes
-        'PreferHBM': PreferHBM,
-        'LookAheadOnePlacement': LookAheadOnePlacement,
-        'PreferHBMPaged': PreferHBMPaged,
-        
+        'HBMInit': defined_classes.get('HBMInit'),
+        'HBMInitPaged': defined_classes.get('HBMInitPaged'),
+        'LookAheadInit': defined_classes.get('LookAheadInit'), 
+        'NoMigration': defined_classes.get('NoMigration'),
+        'JITMigration': defined_classes.get('JITMigration'),
+        'PageMigration': defined_classes.get('PageMigration'),
+        'OnlineAdaptiveMigration': defined_classes.get('OnlineAdaptiveMigration'),
+        'PreferHBM': defined_classes.get('PreferHBM'),
+        'PreferHBMPaged': defined_classes.get('PreferHBMPaged'),
+        'LookAheadOnePlacement': defined_classes.get('LookAheadOnePlacement'),
     }
+    CLASS_MAPPING = {k: v for k, v in CLASS_MAPPING.items() if v is not None}
+    
+    if not CLASS_MAPPING or 'HBMInit' not in CLASS_MAPPING:
+        print("Error: No simulation classes found. Check imports from companion files.")
+        sys.exit(1)
 
     parser = argparse.ArgumentParser()
-    # parser.add_argument('--N', type=int, default=1024*16)
-    # parser.add_argument('--N_pre', type=int, default=1024)
-    parser.add_argument('--para_num', type=float, default=0.5)
-    parser.add_argument('--C_HBM_max', type=float, default=4)
+    parser.add_argument('--para_num', type=float, default=46.7)
+    parser.add_argument('--C_HBM_max', type=float, default=100)
     parser.add_argument('--inclusive', type=str2bool, default=False)
-    parser.add_argument('--filename', type=str, default="04_1_16.txt")
-    parser.add_argument('--init_class', type=str, required=True, 
-                       help='Initialization class name')
-    parser.add_argument('--mig_classes', type=str, nargs='+', required=True,
-                       help='Migration class names separated by spaces')
-    parser.add_argument('--plc_classes', type=str, nargs='+', required=True,
-                       help='Placement class names separated by spaces')
+    parser.add_argument('--filename', type=str, default="mixtral_analysis.csv")
+    parser.add_argument('--init_class', type=str, required=True)
+    parser.add_argument('--mig_classes', type=str, nargs='+', required=True)
+    parser.add_argument('--plc_classes', type=str, nargs='+', required=True)
     parser.add_argument('--B_ext_R', type=float, default=450)
     parser.add_argument('--B_ext_W', type=float, default=450)
     parser.add_argument('--log_file', type=str, default="simulation.txt")
     parser.add_argument('--best', type=str2bool, default=False)
     args = parser.parse_args()
 
-    # Validate and convert class names to actual classes
     try:
         init_class = CLASS_MAPPING[args.init_class]
         mig_classes = [CLASS_MAPPING[name] for name in args.mig_classes]
@@ -410,8 +390,6 @@ if __name__ == "__main__":
         sys.exit(1)
 
     config_params = {
-        # 'N': args.N,
-        # 'N_pre': args.N_pre,
         'para_num': args.para_num,
         'C_HBM_max': args.C_HBM_max,
         'filename': args.filename,
@@ -421,17 +399,37 @@ if __name__ == "__main__":
         'B_ext_W': args.B_ext_W
     }
     
+    # --- DISABLE CSV GENERATION ---
+    step_log_filename = None
+
     with open(args.log_file, 'w') as f:
-        sys.stdout = f
+        class Tee(object):
+            def __init__(self, *files):
+                self.files = files
+            def write(self, obj):
+                for f in self.files:
+                    f.write(obj)
+                    f.flush()
+            def flush(self):
+                for f in self.files:
+                    f.flush()
+        
+        original_stdout = sys.stdout
+        sys.stdout = Tee(original_stdout, f)
+        
         try:
+            print("--- Starting MoE Simulation ---")
             run_simulation(
                 init_class=init_class,
                 config_params=config_params,
                 mig_classes=mig_classes,
-                plc_classes=plc_classes
+                plc_classes=plc_classes,
+                log_filename=step_log_filename 
             )
+            print("--- Simulation Finished ---")
         except Exception as e:
+            import traceback
             print(f"Simulation failed: {str(e)}")
-        sys.stdout = sys.__stdout__
-
-
+            traceback.print_exc(file=sys.stdout)
+        
+        sys.stdout = original_stdout
