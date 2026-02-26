@@ -81,7 +81,7 @@ def evaluate_split(token_pairs, fn: str, params: dict, inclusive: bool,
                 log_filename=split_log_filename
             )
             
-            split_latency, avg_hit_rate, avg_model_weight_ratio = simulator.simulate()
+            split_latency, avg_hit_rate, avg_model_weight_ratio = simulator.simulate(stride=100)
             
             # Return raw latency, average alpha, and average model weight ratio
             return split_latency, avg_hit_rate, avg_model_weight_ratio

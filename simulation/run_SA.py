@@ -14,11 +14,11 @@ experiments = [
         'C_HBM_max': 90,       # 10 GB HBM to force cache competition
         'B_ext_R': 450,        # Standard BW
         'B_ext_W': 450,
-        'filename': '../data/gov_report/mixtral_gov_16_4096_8192_60.csv', # Placeholder trace
+        'filename': '../data/gov_report/mixtral_gov_4_4096_8192_60.csv', # Placeholder trace
         'inclusive': True,
         'best': False,
-        'n_splits': 32,
-        'max_iter': 5,
+        'n_splits': 4,
+        'max_iter': 40,
         'initial_window': 12
     },
 ]
@@ -58,8 +58,14 @@ def run_experiment(config):
         print(f"Completed successfully. Output logged to {log_name}.")
     except subprocess.CalledProcessError as e:
         print(f"Failed: {log_name}")
+        error_message = f"Process failed with return code {e.returncode}.\n"
+        # Return code -9 means SIGKILL (OOM Killer usually sends this)
+        if e.returncode == -9:
+            error_message += "CRITICAL: Process was KILLED (likely Out of Memory). Reduce n_splits.\n"
+        
         print(f"--- Stdout ---\n{e.stdout}")
         print(f"--- Stderr ---\n{e.stderr}")
+        print(f"--- Diagnosis ---\n{error_message}")
         with open(f"ERROR_{log_name}", 'w') as f:
             f.write(f"Stdout:\n{e.stdout}\n\nStderr:\n{e.stderr}")
     

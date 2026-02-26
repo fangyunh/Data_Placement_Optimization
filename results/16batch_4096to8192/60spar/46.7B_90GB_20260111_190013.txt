@@ -1,0 +1,15 @@
+--- Starting MoE Simulation ---
+Reading trace file: ../data/gov_report/mixtral_gov_16_4096_8192_60.csv
+Building trace index...
+Trace index built. Batch Size: 16, Tokens: 4096 to 12287
+Building trace index...
+Trace index built. Batch Size: 16, Tokens: 4096 to 12287
+
+Combination: PreferHBM + NoMigration
+Internal bandwidth for read 450.0 GB/s, and write 450.0 GB/s
+Total time: 118971992789.20022583 ns, 118.97199279 seconds
+Alpha at n=12287, l=31: 0.00000000
+Average HBM hit rate (Alpha): 0.9038
+Average model weight ratio in total read: 0.8991
+------------------------------
+--- Simulation Finished ---

@@ -28,7 +28,7 @@ class TraceReader:
         self.batch_size = 0
         self.line_positions = {}
         self.token_cache = {}
-        self.cache_window = 128 
+        self.cache_window = 16 
         self.current_window_start = None
         
         print("Building trace index...")
@@ -203,7 +203,7 @@ class MemorySimulator(ABC):
         
         return max(T_HBM, T_ext)
     
-    def simulate(self):
+    def simulate(self, stride: int = 10):
         self.total_time = 0.0
         self.step_details = []
         self.total_alpha = 0.0
@@ -230,36 +230,39 @@ class MemorySimulator(ABC):
 
         for n in range(self.cfg.N_pre, self.cfg.N_pre + self.cfg.N):
             for l in range(self.cfg.L):
-                alpha = self.plc.alpha_strategy(n, l)
+                
                 beta = self.plc.beta_strategy(n, l)
-                migration_data = self.mig.migration_strategy(n, l)
-                
-                hbm_MR, hbm_MW, ext_MR, ext_MW = migration_data
 
-                self.total_alpha += alpha
-                self.total_model_weight_ratio += self.model_weight_ratio
-                self.step_count += 1
+                if (n - self.cfg.N_pre) % stride == 0:
+                    alpha = self.plc.alpha_strategy(n, l)
+                    migration_data = self.mig.migration_strategy(n, l)
                 
-                step_time = self.calculate_step_time(n, l, alpha, beta, 
+                    hbm_MR, hbm_MW, ext_MR, ext_MW = migration_data
+
+                    self.total_alpha += alpha * stride
+                    self.total_model_weight_ratio += self.model_weight_ratio * stride
+                    self.step_count += stride
+                
+                    step_time = self.calculate_step_time(n, l, alpha, beta, 
                                                         hbm_MR, hbm_MW,
                                                         ext_MR, ext_MW)
-                self.total_time += step_time
+                    self.total_time += step_time * stride
                 
-                if log_handle:
-                    D_R, D_W = self.status.calculate_data_sizes(n, l)
-                    line = f"{n},{l},{step_time:.2f},{alpha:.4f},{beta:.4f},"
-                    line += f"{D_R/BYTES_TO_GB:.6f},{D_W/BYTES_TO_GB:.6f},"
-                    line += f"{self.status.hbm_capacity_remaining/BYTES_TO_GB:.6f},"
-                    line += f"{hbm_MW/BYTES_TO_GB:.6f},{ext_MR/BYTES_TO_GB:.6f}\n"
-                    log_handle.write(line)
+                    if log_handle:
+                        D_R, D_W = self.status.calculate_data_sizes(n, l)
+                        line = f"{n},{l},{step_time:.2f},{alpha:.4f},{beta:.4f},"
+                        line += f"{D_R/BYTES_TO_GB:.6f},{D_W/BYTES_TO_GB:.6f},"
+                        line += f"{self.status.hbm_capacity_remaining/BYTES_TO_GB:.6f},"
+                        line += f"{hbm_MW/BYTES_TO_GB:.6f},{ext_MR/BYTES_TO_GB:.6f}\n"
+                        log_handle.write(line)
                 
-                self.step_details.append({
-                    'n': n,
-                    'l': l,
-                    'time': step_time,
-                    'alpha': alpha,
-                    'beta': beta
-                })
+                    self.step_details.append({
+                        'n': n,
+                        'l': l,
+                        'time': step_time,
+                        'alpha': alpha,
+                        'beta': beta
+                    })
                 progress_bar.update(1)
                 progress_bar.set_postfix(n=n, l=l, refresh=False)
         
@@ -313,7 +316,7 @@ def run_simulation(init_class: MemStatus, config_params: dict,
                 simulator = MemorySimulator(config, test_initial_state, 
                                         placement_instance, mig_instance, best, log_filename)
                 
-                total_time, avg_hit_rate, avg_model_weight_ratio = simulator.simulate()
+                total_time, avg_hit_rate, avg_model_weight_ratio = simulator.simulate(stride=100)
                 
                 print(f"\nCombination: {p_cls.__name__} + {m_cls.__name__}")
                 print(f"Internal bandwidth for read {config.B_ext_interface_R} GB/s, and write {config.B_ext_interface_W} GB/s")

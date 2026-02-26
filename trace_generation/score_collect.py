@@ -30,7 +30,7 @@ DECODE_LEN        = 8192            # Fixed generation steps for all queries
 # DATASET CONTROLS
 DATASET_SUBSET    = "gov_report"       # Which LongBench dataset to load
 DATASET_START_IDX = 4              # Start index in the dataset
-BATCH_SIZE        = 16              # How many samples to run (e.g. 4, 5, 6, 7)
+BATCH_SIZE        = 32              # How many samples to run (e.g. 4, 5, 6, 7)
 
 DEVICE            = torch.device("cpu")
 DTYPE             = torch.float32  # CPU usually requires float32

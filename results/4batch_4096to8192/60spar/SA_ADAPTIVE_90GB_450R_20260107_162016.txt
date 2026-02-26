@@ -1,0 +1,269 @@
+Starting Parallel Simulated Annealing optimization at 2026-01-07 16:20:16...
+
+Target Strategy: LookAheadInit + OnlineAdaptiveMigration + LookAheadOnePlacement
+Configuration: 46.7B | HBM: 90.0GB | Splits: 4
+Trace File: ../data/gov_report/mixtral_gov_4_4096_8192_60.csv
+Optimization Parameters: Max Iter=40, Initial Temp=100.0, Cooling Rate=0.95
+
+Optimizing window_size...
+
+Iteration 2/40:
+  Temperature: 95.00
+  Current: window=18
+  Current latency: 97.58390486 s
+  Best latency: 97.58390486 s (Window 18)
+==================================================
+
+Iteration 3/40:
+  Temperature: 90.25
+  Current: window=18
+  Current latency: 97.58390486 s
+  Best latency: 97.58390486 s (Window 18)
+==================================================
+
+Iteration 4/40:
+  Temperature: 85.74
+  Current: window=18
+  Current latency: 97.58390486 s
+  Best latency: 97.58390486 s (Window 18)
+==================================================
+
+Iteration 5/40:
+  Temperature: 81.45
+  Current: window=18
+  Current latency: 97.58390486 s
+  Best latency: 97.58390486 s (Window 18)
+==================================================
+
+Iteration 6/40:
+  Temperature: 77.38
+  Current: window=18
+  Current latency: 97.58390486 s
+  Best latency: 97.58390486 s (Window 18)
+==================================================
+
+Iteration 7/40:
+  Temperature: 73.51
+  Current: window=18
+  Current latency: 97.58390486 s
+  Best latency: 97.58390486 s (Window 18)
+==================================================
+
+Iteration 8/40:
+  Temperature: 69.83
+  Current: window=18
+  Current latency: 97.58390486 s
+  Best latency: 97.58390486 s (Window 18)
+==================================================
+
+Iteration 9/40:
+  Temperature: 66.34
+  Current: window=18
+  Current latency: 97.58390486 s
+  Best latency: 97.58390486 s (Window 18)
+==================================================
+
+Iteration 10/40:
+  Temperature: 63.02
+  Current: window=18
+  Current latency: 97.58390486 s
+  Best latency: 97.58390486 s (Window 18)
+==================================================
+
+Iteration 11/40:
+  Temperature: 59.87
+  Current: window=18
+  Current latency: 97.58390486 s
+  Best latency: 97.58390486 s (Window 18)
+==================================================
+
+Iteration 12/40:
+  Temperature: 56.88
+  Current: window=20
+  Current latency: 97.56877783 s
+  Best latency: 97.56877783 s (Window 20)
+==================================================
+
+Iteration 13/40:
+  Temperature: 54.04
+  Current: window=20
+  Current latency: 97.56877783 s
+  Best latency: 97.56877783 s (Window 20)
+==================================================
+
+Iteration 14/40:
+  Temperature: 51.33
+  Current: window=20
+  Current latency: 97.56877783 s
+  Best latency: 97.56877783 s (Window 20)
+==================================================
+
+Iteration 15/40:
+  Temperature: 48.77
+  Current: window=20
+  Current latency: 97.56877783 s
+  Best latency: 97.56877783 s (Window 20)
+==================================================
+
+Iteration 16/40:
+  Temperature: 46.33
+  Current: window=20
+  Current latency: 97.56877783 s
+  Best latency: 97.56877783 s (Window 20)
+==================================================
+
+Iteration 17/40:
+  Temperature: 44.01
+  Current: window=20
+  Current latency: 97.56877783 s
+  Best latency: 97.56877783 s (Window 20)
+==================================================
+
+Iteration 18/40:
+  Temperature: 41.81
+  Current: window=20
+  Current latency: 97.56877783 s
+  Best latency: 97.56877783 s (Window 20)
+==================================================
+
+Iteration 19/40:
+  Temperature: 39.72
+  Current: window=20
+  Current latency: 97.56877783 s
+  Best latency: 97.56877783 s (Window 20)
+==================================================
+
+Iteration 20/40:
+  Temperature: 37.74
+  Current: window=17
+  Current latency: 97.18627352 s
+  Best latency: 97.18627352 s (Window 17)
+==================================================
+
+Iteration 21/40:
+  Temperature: 35.85
+  Current: window=17
+  Current latency: 97.18627352 s
+  Best latency: 97.18627352 s (Window 17)
+==================================================
+
+Iteration 22/40:
+  Temperature: 34.06
+  Current: window=17
+  Current latency: 97.18627352 s
+  Best latency: 97.18627352 s (Window 17)
+==================================================
+
+Iteration 24/40:
+  Temperature: 32.35
+  Current: window=17
+  Current latency: 97.18627352 s
+  Best latency: 97.18627352 s (Window 17)
+==================================================
+
+Iteration 25/40:
+  Temperature: 30.74
+  Current: window=17
+  Current latency: 97.18627352 s
+  Best latency: 97.18627352 s (Window 17)
+==================================================
+
+Iteration 26/40:
+  Temperature: 29.20
+  Current: window=17
+  Current latency: 97.18627352 s
+  Best latency: 97.18627352 s (Window 17)
+==================================================
+
+Iteration 27/40:
+  Temperature: 27.74
+  Current: window=17
+  Current latency: 97.18627352 s
+  Best latency: 97.18627352 s (Window 17)
+==================================================
+
+Iteration 28/40:
+  Temperature: 26.35
+  Current: window=17
+  Current latency: 97.18627352 s
+  Best latency: 97.18627352 s (Window 17)
+==================================================
+
+Iteration 29/40:
+  Temperature: 25.03
+  Current: window=17
+  Current latency: 97.18627352 s
+  Best latency: 97.18627352 s (Window 17)
+==================================================
+
+Iteration 30/40:
+  Temperature: 23.78
+  Current: window=17
+  Current latency: 97.18627352 s
+  Best latency: 97.18627352 s (Window 17)
+==================================================
+
+Iteration 31/40:
+  Temperature: 22.59
+  Current: window=17
+  Current latency: 97.18627352 s
+  Best latency: 97.18627352 s (Window 17)
+==================================================
+
+Iteration 33/40:
+  Temperature: 21.46
+  Current: window=17
+  Current latency: 97.18627352 s
+  Best latency: 97.18627352 s (Window 17)
+==================================================
+
+Iteration 35/40:
+  Temperature: 20.39
+  Current: window=17
+  Current latency: 97.18627352 s
+  Best latency: 97.18627352 s (Window 17)
+==================================================
+
+Iteration 36/40:
+  Temperature: 19.37
+  Current: window=17
+  Current latency: 97.18627352 s
+  Best latency: 97.18627352 s (Window 17)
+==================================================
+
+Iteration 37/40:
+  Temperature: 18.40
+  Current: window=17
+  Current latency: 97.18627352 s
+  Best latency: 97.18627352 s (Window 17)
+==================================================
+
+Iteration 38/40:
+  Temperature: 17.48
+  Current: window=17
+  Current latency: 97.18627352 s
+  Best latency: 97.18627352 s (Window 17)
+==================================================
+
+Iteration 39/40:
+  Temperature: 16.61
+  Current: window=17
+  Current latency: 97.18627352 s
+  Best latency: 97.18627352 s (Window 17)
+==================================================
+
+Iteration 40/40:
+  Temperature: 15.78
+  Current: window=17
+  Current latency: 97.18627352 s
+  Best latency: 97.18627352 s (Window 17)
+==================================================
+
+Optimization completed!
+
+Best parameters found:
+  Window Size (W): 17
+
+Best latency: 97186273516.8 ns (97.18627352 seconds)
+Best HBM hit rate (Alpha): 0.8958
+Best model weight ratio: 0.9591
